@@ -336,14 +336,14 @@ const styles = StyleSheet.create({
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
     marginBottom: 24,
+    justifyContent: 'space-between',
   },
   card: {
     backgroundColor: '#fff',
     borderRadius: 8,
     padding: 16,
-    minWidth: '47%',
+    width: '48%',
     borderWidth: 1,
     borderColor: '#e5e7eb',
     shadowColor: '#000',
@@ -351,6 +351,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
+    marginBottom: 12,
   },
   cardDark: {
     backgroundColor: '#1f2937',
