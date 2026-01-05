@@ -416,65 +416,76 @@ export default function Expenses() {
     const deductibleAmount = baseCost + pstAmount;
 
     return (
-      <View style={[styles.tableRow, isDark && styles.tableRowDark]}>
-        <View style={styles.tableCell}>
-          <Text style={[styles.tableCellText, isDark && styles.tableCellTextDark]}>
-            {formatDate(item.date)}
-          </Text>
+      <View style={[styles.expenseCard, isDark && styles.expenseCardDark]}>
+        <View style={styles.expenseCardHeader}>
+          <View style={styles.expenseCardHeaderLeft}>
+            <Text style={[styles.expenseCardTitle, isDark && styles.expenseCardTitleDark]}>
+              {item.title || 'Untitled Expense'}
+            </Text>
+            <Text style={[styles.expenseCardDate, isDark && styles.expenseCardDateDark]}>
+              {formatDate(item.date)}
+            </Text>
+          </View>
+          <Text style={styles.expenseCardAmount}>-{formatCurrency(item.amount)}</Text>
         </View>
-        <View style={[styles.tableCell, styles.tableCellTitle]}>
-          <Text style={[styles.tableCellText, styles.tableCellTextBold, isDark && styles.tableCellTextDark]}>
-            {item.title || '—'}
-          </Text>
+        
+        <View style={styles.expenseCardBody}>
+          <View style={styles.expenseCardRow}>
+            <View style={[styles.badge, isDark && styles.badgeDark]}>
+              <Text style={[styles.badgeText, isDark && styles.badgeTextDark]}>
+                {getCategoryLabel(item.category)}
+              </Text>
+            </View>
+            {item.vendor && (
+              <Text style={[styles.expenseCardVendor, isDark && styles.expenseCardVendorDark]}>
+                {item.vendor}
+              </Text>
+            )}
+          </View>
+          
           {item.description && (
-            <Text style={[styles.tableCellTextSmall, isDark && styles.tableCellTextDark]}>
+            <Text style={[styles.expenseCardDescription, isDark && styles.expenseCardDescriptionDark]} numberOfLines={2}>
               {item.description}
             </Text>
           )}
-        </View>
-        <View style={[styles.tableCell, styles.tableCellCategory]}>
-          <View style={[styles.badge, isDark && styles.badgeDark]}>
-            <Text style={[styles.badgeText, isDark && styles.badgeTextDark]}>
-              {getCategoryLabel(item.category)}
-            </Text>
+          
+          <View style={[styles.expenseCardFooter, isDark && styles.expenseCardFooterDark]}>
+            <View style={styles.expenseCardStats}>
+              <View style={styles.expenseCardStat}>
+                <Text style={[styles.expenseCardStatLabel, isDark && styles.expenseCardStatLabelDark]}>Deductible</Text>
+                <Text style={[styles.expenseCardStatValue, isDark && styles.expenseCardStatValueDark]}>
+                  {formatCurrency(deductibleAmount)}
+                </Text>
+              </View>
+              {gstAmount > 0 && (
+                <View style={styles.expenseCardStat}>
+                  <Text style={[styles.expenseCardStatLabel, isDark && styles.expenseCardStatLabelDark]}>GST</Text>
+                  <Text style={[styles.expenseCardStatValue, styles.expenseCardStatValueBlue, isDark && styles.expenseCardStatValueBlueDark]}>
+                    {formatCurrency(gstAmount)}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <View style={styles.expenseCardActions}>
+              <TouchableOpacity
+                onPress={() => handleEdit(item)}
+                style={styles.expenseActionButton}
+              >
+                <MaterialIcons name="edit" size={20} color={isDark ? '#9BA1A6' : '#666'} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleDelete(item.id)}
+                disabled={deleteId === item.id}
+                style={styles.expenseActionButton}
+              >
+                {deleteId === item.id ? (
+                  <ActivityIndicator size="small" color="#ef4444" />
+                ) : (
+                  <MaterialIcons name="delete" size={20} color={isDark ? '#9BA1A6' : '#666'} />
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-        <View style={[styles.tableCell, styles.tableCellVendor]}>
-          <Text style={[styles.tableCellText, isDark && styles.tableCellTextDark]}>
-            {item.vendor || '—'}
-          </Text>
-        </View>
-        <View style={[styles.tableCell, styles.tableCellAmount]}>
-          <Text style={styles.tableCellAmountText}>-{formatCurrency(item.amount)}</Text>
-        </View>
-        <View style={[styles.tableCell, styles.tableCellDeductible]}>
-          <Text style={[styles.tableCellText, isDark && styles.tableCellTextDark]}>
-            {formatCurrency(deductibleAmount)}
-          </Text>
-        </View>
-        <View style={[styles.tableCell, styles.tableCellGst]}>
-          <Text style={[styles.tableCellText, isDark && styles.tableCellTextDark]}>
-            {formatCurrency(gstAmount)}
-          </Text>
-        </View>
-        <View style={[styles.tableCell, styles.tableCellAction]}>
-          <TouchableOpacity
-            onPress={() => handleEdit(item)}
-            style={styles.actionButton}
-          >
-            <MaterialIcons name="edit" size={18} color={isDark ? '#9BA1A6' : '#666'} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => handleDelete(item.id)}
-            disabled={deleteId === item.id}
-            style={styles.actionButton}
-          >
-            {deleteId === item.id ? (
-              <ActivityIndicator size="small" color="#ef4444" />
-            ) : (
-              <MaterialIcons name="delete" size={18} color={isDark ? '#9BA1A6' : '#666'} />
-            )}
-          </TouchableOpacity>
         </View>
       </View>
     );
@@ -547,7 +558,7 @@ export default function Expenses() {
               All recorded business expenses for {taxYear}
             </Text>
           </View>
-          <View style={styles.searchContainer}>
+          <View style={[styles.searchContainer, isDark && styles.searchContainerDark]}>
             <MaterialIcons name="search" size={18} color={isDark ? '#9BA1A6' : '#666'} style={styles.searchIcon} />
             <TextInput
               style={[styles.searchInput, isDark && styles.searchInputDark]}
@@ -571,38 +582,13 @@ export default function Expenses() {
             </Text>
           </View>
         ) : (
-          <View>
-            <View style={[styles.tableHeader, isDark && styles.tableHeaderDark]}>
-              <Text style={[styles.tableHeaderText, styles.tableHeaderTextDate, isDark && styles.tableHeaderTextDark]}>
-                Date
-              </Text>
-              <Text style={[styles.tableHeaderText, styles.tableHeaderTextTitle, isDark && styles.tableHeaderTextDark]}>
-                Title
-              </Text>
-              <Text style={[styles.tableHeaderText, styles.tableHeaderTextCategory, isDark && styles.tableHeaderTextDark]}>
-                Category
-              </Text>
-              <Text style={[styles.tableHeaderText, styles.tableHeaderTextVendor, isDark && styles.tableHeaderTextDark]}>
-                Vendor
-              </Text>
-              <Text style={[styles.tableHeaderText, styles.tableHeaderTextAmount, isDark && styles.tableHeaderTextDark]}>
-                Total
-              </Text>
-              <Text style={[styles.tableHeaderText, styles.tableHeaderTextDeductible, isDark && styles.tableHeaderTextDark]}>
-                Deductible
-              </Text>
-              <Text style={[styles.tableHeaderText, styles.tableHeaderTextGst, isDark && styles.tableHeaderTextDark]}>
-                GST
-              </Text>
-              <View style={styles.tableHeaderTextAction} />
-            </View>
-            <FlatList
-              data={filteredExpenses}
-              renderItem={renderExpenseItem}
-              keyExtractor={(item) => item.id}
-              scrollEnabled={false}
-            />
-          </View>
+          <FlatList
+            data={filteredExpenses}
+            renderItem={renderExpenseItem}
+            keyExtractor={(item) => item.id}
+            scrollEnabled={false}
+            ItemSeparatorComponent={() => <View style={styles.expenseCardSeparator} />}
+          />
         )}
       </View>
 
@@ -1132,6 +1118,10 @@ const styles = StyleSheet.create({
     minWidth: 200,
     maxWidth: 300,
   },
+  searchContainerDark: {
+    backgroundColor: '#374151',
+    borderColor: '#4b5563',
+  },
   searchIcon: {
     marginRight: 8,
   },
@@ -1171,118 +1161,132 @@ const styles = StyleSheet.create({
   emptyStateTextDark: {
     color: '#9BA1A6',
   },
-  tableHeader: {
+  expenseCard: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  expenseCardDark: {
+    backgroundColor: '#1f2937',
+    borderColor: '#374151',
+  },
+  expenseCardSeparator: {
+    height: 0,
+  },
+  expenseCardHeader: {
     flexDirection: 'row',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-    backgroundColor: '#f9fafb',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
   },
-  tableHeaderDark: {
-    backgroundColor: '#374151',
-    borderBottomColor: '#4b5563',
+  expenseCardHeaderLeft: {
+    flex: 1,
+    marginRight: 12,
   },
-  tableHeaderText: {
-    fontSize: 12,
+  expenseCardTitle: {
+    fontSize: 16,
     fontWeight: '600',
+    color: '#11181C',
+    marginBottom: 4,
+  },
+  expenseCardTitleDark: {
+    color: '#ECEDEE',
+  },
+  expenseCardDate: {
+    fontSize: 12,
+    color: '#666',
+  },
+  expenseCardDateDark: {
+    color: '#9BA1A6',
+  },
+  expenseCardAmount: {
+    fontSize: 18,
+    fontWeight: '600',
+    fontFamily: 'monospace',
+    color: '#ef4444',
+  },
+  expenseCardBody: {
+    gap: 8,
+  },
+  expenseCardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  expenseCardVendor: {
+    fontSize: 14,
+    color: '#666',
+  },
+  expenseCardVendorDark: {
+    color: '#9BA1A6',
+  },
+  expenseCardDescription: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+  },
+  expenseCardDescriptionDark: {
+    color: '#9BA1A6',
+  },
+  expenseCardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+  },
+  expenseCardFooterDark: {
+    borderTopColor: '#374151',
+  },
+  expenseCardStats: {
+    flexDirection: 'row',
+    gap: 16,
+    flex: 1,
+  },
+  expenseCardStat: {
+    gap: 4,
+  },
+  expenseCardStatLabel: {
+    fontSize: 11,
     color: '#666',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  tableHeaderTextDark: {
+  expenseCardStatLabelDark: {
     color: '#9BA1A6',
   },
-  tableHeaderTextDate: {
-    width: '12%',
-  },
-  tableHeaderTextTitle: {
-    flex: 1,
-    minWidth: 120,
-  },
-  tableHeaderTextCategory: {
-    width: '15%',
-  },
-  tableHeaderTextVendor: {
-    width: '12%',
-  },
-  tableHeaderTextAmount: {
-    width: '12%',
-    textAlign: 'right',
-  },
-  tableHeaderTextDeductible: {
-    width: '12%',
-    textAlign: 'right',
-  },
-  tableHeaderTextGst: {
-    width: '10%',
-    textAlign: 'right',
-  },
-  tableHeaderTextAction: {
-    width: 60,
-  },
-  tableRow: {
-    flexDirection: 'row',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-    alignItems: 'center',
-  },
-  tableRowDark: {
-    borderBottomColor: '#4b5563',
-  },
-  tableCell: {
-    paddingRight: 8,
-  },
-  tableCellText: {
+  expenseCardStatValue: {
     fontSize: 14,
-    color: '#666',
-  },
-  tableCellTextDark: {
-    color: '#9BA1A6',
-  },
-  tableCellTextBold: {
-    fontWeight: '500',
+    fontWeight: '600',
+    fontFamily: 'monospace',
     color: '#11181C',
   },
-  tableCellTextSmall: {
-    fontSize: 12,
-    marginTop: 2,
+  expenseCardStatValueDark: {
+    color: '#ECEDEE',
   },
-  tableCellTitle: {
-    flex: 1,
-    minWidth: 120,
+  expenseCardStatValueBlue: {
+    color: '#3b82f6',
   },
-  tableCellCategory: {
-    width: '15%',
+  expenseCardStatValueBlueDark: {
+    color: '#60a5fa',
   },
-  tableCellVendor: {
-    width: '12%',
-  },
-  tableCellAmount: {
-    width: '12%',
-    alignItems: 'flex-end',
-  },
-  tableCellDeductible: {
-    width: '12%',
-    alignItems: 'flex-end',
-  },
-  tableCellGst: {
-    width: '10%',
-    alignItems: 'flex-end',
-  },
-  tableCellAction: {
-    width: 60,
+  expenseCardActions: {
     flexDirection: 'row',
     gap: 8,
-    alignItems: 'center',
   },
-  tableCellAmountText: {
-    fontSize: 14,
-    fontWeight: '500',
-    fontFamily: 'monospace',
-    color: '#ef4444',
+  expenseActionButton: {
+    padding: 8,
   },
   badge: {
     alignSelf: 'flex-start',
