@@ -3,12 +3,14 @@ import { API_URL, apiRequest } from '@/lib/api';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { refetch } = useAuth();
+  const insets = useSafeAreaInsets();
 
   const testConnection = async () => {
     setIsLoading(true);
@@ -67,7 +69,7 @@ export default function Login() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
-      <View style={styles.content}>
+      <View style={[styles.content, { paddingTop: insets.top + 32 }]}>
         <Text style={styles.title}>Crew Books</Text>
         <Text style={styles.subtitle}>
           Sign in to your account

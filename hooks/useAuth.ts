@@ -7,6 +7,7 @@ interface User {
   firstName?: string;
   lastName?: string;
   profileImageUrl?: string;
+  hasGstNumber?: boolean;
 }
 
 export function useAuth() {

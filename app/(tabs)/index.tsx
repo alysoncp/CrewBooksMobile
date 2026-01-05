@@ -4,6 +4,7 @@ import { formatCurrency, formatPercent, getCategoryLabel, getYearFromDateString 
 import { MaterialIcons } from '@expo/vector-icons';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Types
 interface Income {
@@ -90,6 +91,7 @@ function StatCard({
 export default function Dashboard() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  const insets = useSafeAreaInsets();
   const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const taxYear = new Date().getFullYear();
@@ -177,7 +179,7 @@ export default function Dashboard() {
   return (
     <ScrollView 
       style={[styles.container, isDark && styles.containerDark]} 
-      contentContainerStyle={styles.contentContainer}
+      contentContainerStyle={[styles.contentContainer, { paddingTop: insets.top + 16 }]}
     >
       <View style={styles.header}>
         <Text style={[styles.title, isDark && styles.titleDark]}>Dashboard</Text>
