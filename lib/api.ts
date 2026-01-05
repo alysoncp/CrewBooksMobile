@@ -89,3 +89,66 @@ export async function apiGet<T>(url: string): Promise<T> {
   }
 }
 
+export async function uploadReceiptImage(uri: string): Promise<any> {
+  const fullUrl = `${API_URL}/api/receipts/upload`;
+  
+  if (__DEV__) {
+    console.log(`Uploading receipt image: ${fullUrl}`);
+  }
+  
+  try {
+    // Create FormData for multipart/form-data upload
+    const formData = new FormData();
+    
+    // Extract filename from URI or use a default
+    const filename = uri.split('/').pop() || 'receipt.jpg';
+    const match = /\.(\w+)$/.exec(filename);
+    const type = match ? `image/${match[1]}` : 'image/jpeg';
+    
+    // Backend expects 'files' field (array) and scanWithOCR flag
+    // @ts-ignore - FormData append types are complex in React Native
+    formData.append('files', {
+      uri,
+      name: filename,
+      type,
+    } as any);
+    
+    // Request OCR processing
+    formData.append('scanWithOCR', 'true');
+    // Optional: add notes field if needed
+    // formData.append('notes', '');
+
+    const res = await fetch(fullUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      body: formData,
+      credentials: 'include',
+    });
+
+    if (res.status === 401) {
+      throw new Error('Unauthorized');
+    }
+
+    await throwIfResNotOk(res);
+    const result = await res.json();
+    
+    // Backend returns an array of receipt records
+    // If OCR completed, the first item should have expenseData
+    if (Array.isArray(result) && result.length > 0) {
+      return result[0]; // Return the first receipt (we only upload one at a time)
+    }
+    
+    return result;
+  } catch (error: any) {
+    if (error.message?.includes('Network request failed') || error.message?.includes('Failed to fetch')) {
+      throw new Error(
+        `Cannot connect to backend at ${fullUrl}. ` +
+        `If testing on a physical device, use your computer's IP address instead of localhost.`
+      );
+    }
+    throw error;
+  }
+}
+

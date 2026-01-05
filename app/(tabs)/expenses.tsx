@@ -1,6 +1,6 @@
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/hooks/useAuth';
-import { apiGet, apiRequest } from '@/lib/api';
+import { apiGet, apiRequest, uploadReceiptImage } from '@/lib/api';
 import { formatCurrency, formatDate, getCategoryLabel, getTodayLocalDateString, getYearFromDateString } from '@/lib/format';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -125,6 +125,7 @@ export default function Expenses() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [lastEditedField, setLastEditedField] = useState<'baseCost' | 'total' | 'gstAmount' | 'pstAmount' | null>(null);
+  const [isProcessingReceipt, setIsProcessingReceipt] = useState(false);
 
   const [formData, setFormData] = useState<ExpenseFormData>({
     baseCost: '',
@@ -518,6 +519,86 @@ export default function Expenses() {
     setIsModalOpen(true);
   };
 
+  const processReceiptImage = async (uri: string) => {
+    try {
+      setIsProcessingReceipt(true);
+      const receiptData = await uploadReceiptImage(uri);
+      
+      // Check if OCR completed successfully
+      if (receiptData.ocrStatus === 'completed' && receiptData.expenseData) {
+        // Backend provides expenseData when OCR is successful
+        const expenseData = receiptData.expenseData;
+        
+        const total = expenseData.total || expenseData.amount || 0;
+        const date = expenseData.date || getTodayLocalDateString();
+        const vendor = expenseData.vendor || expenseData.merchantName || '';
+        const category = expenseData.category || '';
+        const description = expenseData.description || expenseData.notes || '';
+        const baseCost = expenseData.baseCost || expenseData.subtotal || (total - (expenseData.gstAmount || 0) - (expenseData.pstAmount || 0));
+        const gstAmount = expenseData.gstAmount || 0;
+        const pstAmount = expenseData.pstAmount || 0;
+
+        setFormData({
+          baseCost: baseCost ? parseFloat(baseCost.toString()).toFixed(2) : total.toFixed(2),
+          total: parseFloat(total.toString()).toFixed(2),
+          gstAmount: gstAmount ? parseFloat(gstAmount.toString()).toFixed(2) : '',
+          pstAmount: pstAmount ? parseFloat(pstAmount.toString()).toFixed(2) : '',
+          gstIncluded: !!gstAmount,
+          pstIncluded: !!pstAmount,
+          date: date,
+          title: vendor || description || 'Receipt',
+          category: category || '',
+          subcategory: expenseData.subcategory || '',
+          vehicleId: expenseData.vehicleId || '',
+          vendor: vendor,
+          description: description,
+          isTaxDeductible: expenseData.isTaxDeductible !== undefined ? expenseData.isTaxDeductible : true,
+        });
+        setLastEditedField('total');
+        setIsModalOpen(true);
+      } else if (receiptData.ocrStatus === 'processing') {
+        // OCR is still processing (shouldn't happen with sync processing, but handle it)
+        Alert.alert(
+          'OCR Processing',
+          'Receipt uploaded but OCR is still processing. Please check back later.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        // OCR failed or not available
+        Alert.alert(
+          'OCR Not Available',
+          receiptData.ocrError || 'Could not extract data from receipt. Please use manual entry.',
+          [
+            { text: 'Manual Entry', onPress: openExpenseForm },
+            { text: 'OK', style: 'cancel' },
+          ]
+        );
+      }
+      setIsProcessingReceipt(false);
+    } catch (error: any) {
+      console.error('Error processing receipt:', error);
+      setIsProcessingReceipt(false);
+      
+      // Check for subscription tier error
+      if (error.message?.includes('403') || error.message?.includes('subscription')) {
+        Alert.alert(
+          'Subscription Required',
+          'Receipt uploads require a Personal or Corporate subscription. Please upgrade your plan.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert(
+          'Error Processing Receipt',
+          error.message || 'Failed to process receipt. Please try again or use manual entry.',
+          [
+            { text: 'Try Manual Entry', onPress: openExpenseForm },
+            { text: 'OK', style: 'cancel' },
+          ]
+        );
+      }
+    }
+  };
+
   const handleTakePhoto = async () => {
     try {
       const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
@@ -534,10 +615,7 @@ export default function Expenses() {
       });
 
       if (!result.canceled && result.assets[0]) {
-        // TODO: Handle receipt photo - could upload and process with OCR
-        Alert.alert('Photo Taken', 'Receipt photo functionality coming soon. For now, please use manual entry.');
-        // After OCR processing, you could pre-fill the form and open it
-        // openExpenseForm();
+        await processReceiptImage(result.assets[0].uri);
       }
     } catch (error) {
       console.error('Error taking photo:', error);
@@ -561,10 +639,7 @@ export default function Expenses() {
       });
 
       if (!result.canceled && result.assets[0]) {
-        // TODO: Handle receipt photo - could upload and process with OCR
-        Alert.alert('Photo Selected', 'Receipt photo functionality coming soon. For now, please use manual entry.');
-        // After OCR processing, you could pre-fill the form and open it
-        // openExpenseForm();
+        await processReceiptImage(result.assets[0].uri);
       }
     } catch (error) {
       console.error('Error picking image:', error);
