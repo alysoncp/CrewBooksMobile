@@ -1,3 +1,4 @@
+import { useTaxYear } from '@/contexts/TaxYearContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/hooks/useAuth';
 import { apiGet, apiRequest, uploadReceiptImage } from '@/lib/api';
@@ -110,8 +111,8 @@ export default function Expenses() {
   const isDark = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { taxYear } = useTaxYear();
   const hasGstNumber = user?.hasGstNumber === true;
-  const taxYear = new Date().getFullYear();
 
   const [expenseList, setExpenseList] = useState<Expense[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);

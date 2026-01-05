@@ -1,3 +1,4 @@
+import { useTaxYear } from '@/contexts/TaxYearContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -17,9 +18,9 @@ export default function More() {
   const isDark = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const currentYear = new Date().getFullYear();
-  const [selectedTaxYear, setSelectedTaxYear] = useState(currentYear);
+  const { taxYear, setTaxYear } = useTaxYear();
   const [showYearPicker, setShowYearPicker] = useState(false);
+  const currentYear = new Date().getFullYear();
 
   // Generate array of years (current year and 5 years back)
   const availableYears = Array.from({ length: 6 }, (_, i) => currentYear - i);
@@ -111,7 +112,7 @@ export default function More() {
           activeOpacity={0.7}
         >
           <Text style={[styles.taxYearValue, isDark && styles.taxYearValueDark]}>
-            {selectedTaxYear}
+            {taxYear}
           </Text>
           <MaterialIcons name="arrow-drop-down" size={24} color={isDark ? '#9BA1A6' : '#666'} />
         </TouchableOpacity>
@@ -173,24 +174,23 @@ export default function More() {
                   key={year}
                   style={[
                     styles.pickerOption,
-                    year === selectedTaxYear && styles.pickerOptionSelected,
+                    year === taxYear && styles.pickerOptionSelected,
                   ]}
                   onPress={() => {
-                    setSelectedTaxYear(year);
+                    setTaxYear(year);
                     setShowYearPicker(false);
-                    // TODO: Store selected tax year and update other pages
                   }}
                 >
                   <Text
                     style={[
                       styles.pickerOptionText,
                       isDark && styles.pickerOptionTextDark,
-                      year === selectedTaxYear && styles.pickerOptionTextSelected,
+                      year === taxYear && styles.pickerOptionTextSelected,
                     ]}
                   >
                     {year}
                   </Text>
-                  {year === selectedTaxYear && (
+                  {year === taxYear && (
                     <MaterialIcons name="check" size={24} color={isDark ? '#0a7ea4' : '#0a7ea4'} />
                   )}
                 </TouchableOpacity>

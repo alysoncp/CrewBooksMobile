@@ -1,3 +1,4 @@
+import { useTaxYear } from '@/contexts/TaxYearContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { apiGet } from '@/lib/api';
 import { formatCurrency, formatPercent, getCategoryLabel, getYearFromDateString } from '@/lib/format';
@@ -95,9 +96,9 @@ export default function Dashboard() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
+  const { taxYear } = useTaxYear();
   const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const taxYear = new Date().getFullYear();
 
   useEffect(() => {
     const fetchDashboardData = async () => {
