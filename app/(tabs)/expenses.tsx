@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { apiGet, apiRequest } from '@/lib/api';
 import { formatCurrency, formatDate, getCategoryLabel, getTodayLocalDateString, getYearFromDateString } from '@/lib/format';
 import { MaterialIcons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -15,7 +16,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -491,6 +492,112 @@ export default function Expenses() {
     );
   };
 
+  const resetFormData = () => {
+    setEditingExpense(null);
+    setFormData({
+      baseCost: '',
+      total: '',
+      gstAmount: '',
+      pstAmount: '',
+      gstIncluded: true,
+      pstIncluded: true,
+      date: getTodayLocalDateString(),
+      title: '',
+      category: '',
+      subcategory: '',
+      vehicleId: '',
+      vendor: '',
+      description: '',
+      isTaxDeductible: true,
+    });
+    setLastEditedField(null);
+  };
+
+  const openExpenseForm = () => {
+    resetFormData();
+    setIsModalOpen(true);
+  };
+
+  const handleTakePhoto = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+      if (permissionResult.granted === false) {
+        Alert.alert('Permission Required', 'Camera permission is required to take photos');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        // TODO: Handle receipt photo - could upload and process with OCR
+        Alert.alert('Photo Taken', 'Receipt photo functionality coming soon. For now, please use manual entry.');
+        // After OCR processing, you could pre-fill the form and open it
+        // openExpenseForm();
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      Alert.alert('Error', 'Failed to take photo. Please try again.');
+    }
+  };
+
+  const handlePickImage = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (permissionResult.granted === false) {
+        Alert.alert('Permission Required', 'Photo library permission is required to select photos');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        // TODO: Handle receipt photo - could upload and process with OCR
+        Alert.alert('Photo Selected', 'Receipt photo functionality coming soon. For now, please use manual entry.');
+        // After OCR processing, you could pre-fill the form and open it
+        // openExpenseForm();
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to select photo. Please try again.');
+    }
+  };
+
+  const handleAddPress = () => {
+    Alert.alert(
+      'Add Expense',
+      'Choose how you want to add an expense',
+      [
+        {
+          text: 'Take Photo',
+          onPress: handleTakePhoto,
+        },
+        {
+          text: 'Choose from Gallery',
+          onPress: handlePickImage,
+        },
+        {
+          text: 'Manual Entry',
+          onPress: openExpenseForm,
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
   return (
     <ScrollView style={[styles.container, isDark && styles.containerDark]} contentContainerStyle={[styles.contentContainer, { paddingTop: insets.top + 8 }]}>
       <View style={styles.header}>
@@ -501,31 +608,11 @@ export default function Expenses() {
           </Text>
         </View>
         <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => {
-            setEditingExpense(null);
-            setFormData({
-              baseCost: '',
-              total: '',
-              gstAmount: '',
-              pstAmount: '',
-              gstIncluded: true,
-              pstIncluded: true,
-              date: getTodayLocalDateString(),
-              title: '',
-              category: '',
-              subcategory: '',
-              vehicleId: '',
-              vendor: '',
-              description: '',
-              isTaxDeductible: true,
-            });
-            setLastEditedField(null);
-            setIsModalOpen(true);
-          }}
+          style={styles.fabButton}
+          onPress={handleAddPress}
+          activeOpacity={0.8}
         >
-          <MaterialIcons name="add" size={18} color="#fff" />
-          <Text style={styles.addButtonText}>Add Expense</Text>
+          <MaterialIcons name="add" size={28} color="#fff" />
         </TouchableOpacity>
       </View>
 
@@ -992,19 +1079,18 @@ const styles = StyleSheet.create({
   subtitleDark: {
     color: '#9BA1A6',
   },
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  fabButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: '#0a7ea4',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-    gap: 8,
-  },
-  addButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
   },
   statsGrid: {
     flexDirection: 'row',
