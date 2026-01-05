@@ -1,9 +1,10 @@
 import { useTaxYear } from '@/contexts/TaxYearContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/hooks/useAuth';
-import { apiGet, apiRequest } from '@/lib/api';
+import { apiGet, apiRequest, uploadReceiptImage } from '@/lib/api';
 import { formatCurrency, formatDate, getIncomeTypeLabel, getTodayLocalDateString, getYearFromDateString } from '@/lib/format';
 import { MaterialIcons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -76,6 +77,7 @@ export default function Income() {
   const [showAccountingOfficePicker, setShowAccountingOfficePicker] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isProcessingReceipt, setIsProcessingReceipt] = useState(false);
 
   const [formData, setFormData] = useState<IncomeFormData>({
     amount: '',
@@ -212,40 +214,217 @@ export default function Income() {
     );
   };
 
+  const resetFormData = () => {
+    setFormData({
+      amount: '',
+      date: getTodayLocalDateString(),
+      incomeType: '',
+      productionName: '',
+      accountingOffice: '',
+      gstHstCollected: '',
+      dues: '',
+      retirement: '',
+      labour: '',
+      buyout: '',
+      pension: '',
+      insurance: '',
+    });
+    setCustomAccountingOffice('');
+  };
+
+  const openIncomeForm = () => {
+    resetFormData();
+    setIsModalOpen(true);
+  };
+
+  const processReceiptImage = async (uri: string) => {
+    try {
+      setIsProcessingReceipt(true);
+      const receiptData = await uploadReceiptImage(uri);
+      
+      // Check if OCR completed successfully
+      if (receiptData.ocrStatus === 'completed' && receiptData.expenseData) {
+        // Backend provides expenseData when OCR is successful
+        // For income, we'll try to extract relevant fields
+        const expenseData = receiptData.expenseData;
+        
+        const amount = expenseData.total || expenseData.amount || 0;
+        const date = expenseData.date || getTodayLocalDateString();
+        const productionName = expenseData.vendor || expenseData.merchantName || expenseData.description || '';
+        
+        setFormData({
+          amount: parseFloat(amount.toString()).toFixed(2),
+          date: date,
+          incomeType: '', // User will need to select this
+          productionName: productionName,
+          accountingOffice: '',
+          gstHstCollected: expenseData.gstAmount ? parseFloat(expenseData.gstAmount.toString()).toFixed(2) : '',
+          dues: '',
+          retirement: '',
+          labour: '',
+          buyout: '',
+          pension: '',
+          insurance: '',
+        });
+        setIsModalOpen(true);
+      } else if (receiptData.ocrStatus === 'processing') {
+        Alert.alert(
+          'OCR Processing',
+          'Receipt uploaded but OCR is still processing. Please check back later.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert(
+          'OCR Not Available',
+          receiptData.ocrError || 'Could not extract data from receipt. Please use manual entry.',
+          [
+            { text: 'Manual Entry', onPress: openIncomeForm },
+            { text: 'OK', style: 'cancel' },
+          ]
+        );
+      }
+      setIsProcessingReceipt(false);
+    } catch (error: any) {
+      console.error('Error processing receipt:', error);
+      setIsProcessingReceipt(false);
+      
+      // Check for subscription tier error
+      if (error.message?.includes('403') || error.message?.includes('subscription')) {
+        Alert.alert(
+          'Subscription Required',
+          'Receipt uploads require a Personal or Corporate subscription. Please upgrade your plan.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert(
+          'Error Processing Receipt',
+          error.message || 'Failed to process receipt. Please try again or use manual entry.',
+          [
+            { text: 'Try Manual Entry', onPress: openIncomeForm },
+            { text: 'OK', style: 'cancel' },
+          ]
+        );
+      }
+    }
+  };
+
+  const handleTakePhoto = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+      if (permissionResult.granted === false) {
+        Alert.alert('Permission Required', 'Camera permission is required to take photos');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        await processReceiptImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      Alert.alert('Error', 'Failed to take photo. Please try again.');
+    }
+  };
+
+  const handlePickImage = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (permissionResult.granted === false) {
+        Alert.alert('Permission Required', 'Photo library permission is required to select photos');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        await processReceiptImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to select photo. Please try again.');
+    }
+  };
+
+  const handleAddPress = () => {
+    Alert.alert(
+      'Add Income',
+      'Choose how you want to add income',
+      [
+        {
+          text: 'Take Photo',
+          onPress: handleTakePhoto,
+        },
+        {
+          text: 'Choose from Gallery',
+          onPress: handlePickImage,
+        },
+        {
+          text: 'Manual Entry',
+          onPress: openIncomeForm,
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
   const renderIncomeItem = ({ item }: { item: Income }) => (
-    <View style={[styles.tableRow, isDark && styles.tableRowDark]}>
-      <View style={styles.tableCell}>
-        <Text style={[styles.tableCellText, isDark && styles.tableCellTextDark]}>
-          {formatDate(item.date)}
-        </Text>
-      </View>
-      <View style={styles.tableCell}>
-        <View style={[styles.badge, isDark && styles.badgeDark]}>
-          <Text style={[styles.badgeText, isDark && styles.badgeTextDark]}>
-            {getIncomeTypeLabel(item.incomeType)}
+    <View style={[styles.incomeCard, isDark && styles.incomeCardDark]}>
+      <View style={styles.incomeCardHeader}>
+        <View style={styles.incomeCardHeaderLeft}>
+          <Text style={[styles.incomeCardTitle, isDark && styles.incomeCardTitleDark]}>
+            {item.productionName || 'Untitled Income'}
+          </Text>
+          <Text style={[styles.incomeCardDate, isDark && styles.incomeCardDateDark]}>
+            {formatDate(item.date)}
           </Text>
         </View>
+        <Text style={styles.incomeCardAmount}>{formatCurrency(item.amount)}</Text>
       </View>
-      <View style={[styles.tableCell, styles.tableCellProduction]}>
-        <Text style={[styles.tableCellText, styles.tableCellTextBold, isDark && styles.tableCellTextDark]}>
-          {item.productionName || '—'}
-        </Text>
-      </View>
-      <View style={[styles.tableCell, styles.tableCellAmount]}>
-        <Text style={styles.tableCellAmountText}>{formatCurrency(item.amount)}</Text>
-      </View>
-      <View style={[styles.tableCell, styles.tableCellAction]}>
-        <TouchableOpacity
-          onPress={() => handleDelete(item.id)}
-          disabled={deleteId === item.id}
-          style={styles.deleteButton}
-        >
-          {deleteId === item.id ? (
-            <ActivityIndicator size="small" color="#ef4444" />
-          ) : (
-            <MaterialIcons name="delete" size={18} color={isDark ? '#9BA1A6' : '#666'} />
+      
+      <View style={styles.incomeCardBody}>
+        <View style={styles.incomeCardRow}>
+          <View style={[styles.badge, isDark && styles.badgeDark]}>
+            <Text style={[styles.badgeText, isDark && styles.badgeTextDark]}>
+              {getIncomeTypeLabel(item.incomeType)}
+            </Text>
+          </View>
+          {item.accountingOffice && (
+            <Text style={[styles.incomeCardOffice, isDark && styles.incomeCardOfficeDark]}>
+              {item.accountingOffice}
+            </Text>
           )}
-        </TouchableOpacity>
+        </View>
+      </View>
+      
+      <View style={[styles.incomeCardFooter, isDark && styles.incomeCardFooterDark]}>
+        <View style={styles.incomeCardActions}>
+          <TouchableOpacity
+            onPress={() => handleDelete(item.id)}
+            disabled={deleteId === item.id}
+            style={styles.incomeActionButton}
+          >
+            {deleteId === item.id ? (
+              <ActivityIndicator size="small" color="#ef4444" />
+            ) : (
+              <MaterialIcons name="delete" size={20} color={isDark ? '#9BA1A6' : '#666'} />
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -261,7 +440,7 @@ export default function Income() {
         </View>
         <TouchableOpacity
           style={styles.addButton}
-          onPress={() => setIsModalOpen(true)}
+          onPress={handleAddPress}
         >
           <MaterialIcons name="add" size={18} color="#fff" />
           <Text style={styles.addButtonText}>Add Income</Text>
@@ -300,29 +479,13 @@ export default function Income() {
             </Text>
           </View>
         ) : (
-          <View>
-            <View style={[styles.tableHeader, isDark && styles.tableHeaderDark]}>
-              <Text style={[styles.tableHeaderText, styles.tableHeaderTextDate, isDark && styles.tableHeaderTextDark]}>
-                Date
-              </Text>
-              <Text style={[styles.tableHeaderText, styles.tableHeaderTextType, isDark && styles.tableHeaderTextDark]}>
-                Type
-              </Text>
-              <Text style={[styles.tableHeaderText, styles.tableHeaderTextProduction, isDark && styles.tableHeaderTextDark]}>
-                Production
-              </Text>
-              <Text style={[styles.tableHeaderText, styles.tableHeaderTextAmount, isDark && styles.tableHeaderTextDark]}>
-                Amount
-              </Text>
-              <View style={styles.tableHeaderTextAction} />
-            </View>
-            <FlatList
-              data={filteredIncome}
-              renderItem={renderIncomeItem}
-              keyExtractor={(item) => item.id}
-              scrollEnabled={false}
-            />
-          </View>
+          <FlatList
+            data={filteredIncome}
+            renderItem={renderIncomeItem}
+            keyExtractor={(item) => item.id}
+            scrollEnabled={false}
+            ItemSeparatorComponent={() => <View style={styles.incomeCardSeparator} />}
+          />
         )}
       </View>
 
@@ -849,9 +1012,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
   },
   badgeDark: {
     backgroundColor: '#4b5563',
+    borderColor: '#6b7280',
   },
   badgeText: {
     fontSize: 12,
@@ -861,8 +1027,92 @@ const styles = StyleSheet.create({
   badgeTextDark: {
     color: '#9BA1A6',
   },
-  deleteButton: {
-    padding: 4,
+  incomeCard: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  incomeCardDark: {
+    backgroundColor: '#1f2937',
+    borderColor: '#374151',
+  },
+  incomeCardSeparator: {
+    height: 0,
+  },
+  incomeCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  incomeCardHeaderLeft: {
+    flex: 1,
+    marginRight: 12,
+  },
+  incomeCardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#11181C',
+    marginBottom: 4,
+  },
+  incomeCardTitleDark: {
+    color: '#ECEDEE',
+  },
+  incomeCardDate: {
+    fontSize: 12,
+    color: '#666',
+  },
+  incomeCardDateDark: {
+    color: '#9BA1A6',
+  },
+  incomeCardAmount: {
+    fontSize: 18,
+    fontWeight: '600',
+    fontFamily: 'monospace',
+    color: '#10b981',
+  },
+  incomeCardBody: {
+    gap: 8,
+  },
+  incomeCardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  incomeCardOffice: {
+    fontSize: 14,
+    color: '#666',
+  },
+  incomeCardOfficeDark: {
+    color: '#9BA1A6',
+  },
+  incomeCardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+  },
+  incomeCardFooterDark: {
+    borderTopColor: '#374151',
+  },
+  incomeCardActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  incomeActionButton: {
+    padding: 8,
   },
   modalContainer: {
     flex: 1,
