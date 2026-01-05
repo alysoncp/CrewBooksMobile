@@ -20,6 +20,7 @@ const MAPPING = {
   'chevron.right': 'chevron-right',
   'dollarsign.circle.fill': 'attach-money',
   'receipt.fill': 'receipt',
+  'ellipsis.circle.fill': 'more-horiz',
 } as IconMapping;
 
 /**
