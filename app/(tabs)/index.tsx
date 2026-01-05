@@ -185,7 +185,7 @@ export default function Dashboard() {
   return (
     <ScrollView 
       style={[styles.container, isDark && styles.containerDark]} 
-      contentContainerStyle={[styles.contentContainer, { paddingTop: insets.top + 16 }]}
+      contentContainerStyle={[styles.contentContainer, { paddingTop: insets.top + 8 }]}
     >
       <View style={styles.header}>
         <Text style={[styles.title, isDark && styles.titleDark]}>Dashboard</Text>

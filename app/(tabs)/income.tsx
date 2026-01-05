@@ -250,7 +250,7 @@ export default function Income() {
   );
 
   return (
-    <ScrollView style={[styles.container, isDark && styles.containerDark]} contentContainerStyle={[styles.contentContainer, { paddingTop: insets.top + 16 }]}>
+    <ScrollView style={[styles.container, isDark && styles.containerDark]} contentContainerStyle={[styles.contentContainer, { paddingTop: insets.top + 8 }]}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Text style={[styles.title, isDark && styles.titleDark]}>Income</Text>
