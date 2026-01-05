@@ -3,7 +3,8 @@ import { apiGet } from '@/lib/api';
 import { formatCurrency, formatPercent, getCategoryLabel, getYearFromDateString } from '@/lib/format';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { PieChart } from 'react-native-chart-kit';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Types
@@ -50,7 +51,7 @@ function StatCard({
   title: string;
   value: string;
   subtitle?: string;
-  iconName: keyof typeof MaterialIcons.glyphMap;
+  iconName?: keyof typeof MaterialIcons.glyphMap;
   trend?: 'up' | 'down' | 'neutral';
   isLoading?: boolean;
 }) {
@@ -61,9 +62,11 @@ function StatCard({
     <View style={[styles.card, isDark && styles.cardDark]}>
       <View style={styles.cardHeader}>
         <Text style={[styles.cardTitle, isDark && styles.cardTitleDark]}>{title}</Text>
-        <View style={[styles.iconContainer, isDark && styles.iconContainerDark]}>
-          <MaterialIcons name={iconName} size={16} color={isDark ? '#9BA1A6' : '#666'} />
-        </View>
+        {iconName && (
+          <View style={[styles.iconContainer, isDark && styles.iconContainerDark]}>
+            <MaterialIcons name={iconName} size={16} color={isDark ? '#9BA1A6' : '#666'} />
+          </View>
+        )}
       </View>
       <View style={styles.cardContent}>
         {isLoading ? (
@@ -167,14 +170,17 @@ export default function Dashboard() {
     });
 
     return Object.entries(categoryTotals)
-      .map(([category, amount]) => ({
+      .map(([category, amount], index) => ({
+        name: getCategoryLabel(category),
         category: getCategoryLabel(category),
         amount,
-        color: '',
+        color: CHART_COLORS[index % CHART_COLORS.length],
+        legendFontColor: isDark ? '#ECEDEE' : '#11181C',
+        legendFontSize: 12,
       }))
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 8);
-  }, [filteredExpenses]);
+  }, [filteredExpenses, isDark]);
 
   return (
     <ScrollView 
@@ -193,7 +199,6 @@ export default function Dashboard() {
           title="Total Income"
           value={formatCurrency(totalIncome)}
           subtitle="Year to date"
-          iconName="attach-money"
           trend="up"
           isLoading={isLoading}
         />
@@ -201,7 +206,6 @@ export default function Dashboard() {
           title="Deductible Expenses"
           value={formatCurrency(totalExpenses)}
           subtitle="Year to date"
-          iconName="receipt"
           trend="neutral"
           isLoading={isLoading}
         />
@@ -209,16 +213,12 @@ export default function Dashboard() {
           title="Net Income"
           value={formatCurrency(netIncome)}
           subtitle="After deductions"
-          iconName="trending-up"
           trend={netIncome > 0 ? 'up' : 'down'}
           isLoading={isLoading}
         />
         <View style={[styles.card, isDark && styles.cardDark]}>
           <View style={styles.cardHeader}>
             <Text style={[styles.cardTitle, isDark && styles.cardTitleDark]}>{taxLabel}</Text>
-            <View style={[styles.iconContainer, isDark && styles.iconContainerDark]}>
-              <MaterialIcons name="calculate" size={16} color={isDark ? '#9BA1A6' : '#666'} />
-            </View>
           </View>
           <View style={styles.cardContent}>
             {isLoading ? (
@@ -246,25 +246,43 @@ export default function Dashboard() {
         </View>
         {isLoading ? (
           <ActivityIndicator size="large" color={isDark ? '#9BA1A6' : '#666'} style={styles.loader} />
-        ) : (
-          <View style={styles.categoryList}>
-            {expensesByCategory.slice(0, 5).map((item, index) => (
-              <View key={item.category} style={styles.categoryItem}>
-                <View style={styles.categoryLeft}>
-                  <View
-                    style={[
-                      styles.categoryDot,
-                      { backgroundColor: CHART_COLORS[index % CHART_COLORS.length] },
-                    ]}
-                  />
-                  <Text style={[styles.categoryLabel, isDark && styles.categoryLabelDark]}>{item.category}</Text>
+        ) : expensesByCategory.length > 0 ? (
+          <>
+            <View style={styles.chartContainer}>
+              <PieChart
+                data={expensesByCategory}
+                width={Dimensions.get('window').width - 64}
+                height={220}
+                chartConfig={{
+                  color: (opacity = 1) => isDark ? `rgba(236, 237, 238, ${opacity})` : `rgba(17, 24, 28, ${opacity})`,
+                }}
+                accessor="amount"
+                backgroundColor="transparent"
+                paddingLeft="15"
+                absolute
+              />
+            </View>
+            <View style={styles.categoryList}>
+              {expensesByCategory.slice(0, 5).map((item) => (
+                <View key={item.category} style={styles.categoryItem}>
+                  <View style={styles.categoryLeft}>
+                    <View
+                      style={[
+                        styles.categoryDot,
+                        { backgroundColor: item.color },
+                      ]}
+                    />
+                    <Text style={[styles.categoryLabel, isDark && styles.categoryLabelDark]}>{item.category}</Text>
+                  </View>
+                  <Text style={[styles.categoryAmount, isDark && styles.categoryAmountDark]}>
+                    {formatCurrency(item.amount)}
+                  </Text>
                 </View>
-                <Text style={[styles.categoryAmount, isDark && styles.categoryAmountDark]}>
-                  {formatCurrency(item.amount)}
-                </Text>
-              </View>
-            ))}
-          </View>
+              ))}
+            </View>
+          </>
+        ) : (
+          <Text style={[styles.emptyText, isDark && styles.emptyTextDark]}>No expenses data available</Text>
         )}
       </View>
 
@@ -457,8 +475,23 @@ const styles = StyleSheet.create({
   loader: {
     marginVertical: 32,
   },
+  chartContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
+    marginVertical: 16,
+  },
   categoryList: {
     gap: 12,
+    marginTop: 8,
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: '#666',
+    fontSize: 14,
+    marginVertical: 32,
+  },
+  emptyTextDark: {
+    color: '#9BA1A6',
   },
   categoryItem: {
     flexDirection: 'row',
