@@ -19,6 +19,7 @@ const MAPPING = {
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
   'dollarsign.circle.fill': 'attach-money',
+  'receipt.fill': 'receipt',
 } as IconMapping;
 
 /**
