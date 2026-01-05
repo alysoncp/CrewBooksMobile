@@ -1,7 +1,8 @@
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useState } from 'react';
+import { Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface MenuItem {
@@ -16,6 +17,12 @@ export default function More() {
   const isDark = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const currentYear = new Date().getFullYear();
+  const [selectedTaxYear, setSelectedTaxYear] = useState(currentYear);
+  const [showYearPicker, setShowYearPicker] = useState(false);
+
+  // Generate array of years (current year and 5 years back)
+  const availableYears = Array.from({ length: 6 }, (_, i) => currentYear - i);
 
   const handleLogout = () => {
     Alert.alert(
@@ -91,6 +98,25 @@ export default function More() {
         </Text>
       </View>
 
+      <View style={[styles.taxYearSection, isDark && styles.taxYearSectionDark]}>
+        <View style={styles.taxYearHeader}>
+          <Text style={[styles.taxYearLabel, isDark && styles.taxYearLabelDark]}>Tax Year</Text>
+          <Text style={[styles.taxYearDescription, isDark && styles.taxYearDescriptionDark]}>
+            Select the tax year for viewing your finances
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={[styles.taxYearPicker, isDark && styles.taxYearPickerDark]}
+          onPress={() => setShowYearPicker(true)}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.taxYearValue, isDark && styles.taxYearValueDark]}>
+            {selectedTaxYear}
+          </Text>
+          <MaterialIcons name="arrow-drop-down" size={24} color={isDark ? '#9BA1A6' : '#666'} />
+        </TouchableOpacity>
+      </View>
+
       <View style={[styles.menuSection, isDark && styles.menuSectionDark]}>
         {menuItems.map((item, index) => (
           <TouchableOpacity
@@ -127,6 +153,52 @@ export default function More() {
         <MaterialIcons name="logout" size={24} color="#ef4444" />
         <Text style={styles.logoutButtonText}>Sign Out</Text>
       </TouchableOpacity>
+
+      {/* Year Picker Modal */}
+      <Modal
+        visible={showYearPicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowYearPicker(false)}
+      >
+        <TouchableOpacity
+          style={styles.pickerOverlay}
+          activeOpacity={1}
+          onPress={() => setShowYearPicker(false)}
+        >
+          <View style={[styles.pickerModal, isDark && styles.pickerModalDark]}>
+            <ScrollView>
+              {availableYears.map((year) => (
+                <TouchableOpacity
+                  key={year}
+                  style={[
+                    styles.pickerOption,
+                    year === selectedTaxYear && styles.pickerOptionSelected,
+                  ]}
+                  onPress={() => {
+                    setSelectedTaxYear(year);
+                    setShowYearPicker(false);
+                    // TODO: Store selected tax year and update other pages
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.pickerOptionText,
+                      isDark && styles.pickerOptionTextDark,
+                      year === selectedTaxYear && styles.pickerOptionTextSelected,
+                    ]}
+                  >
+                    {year}
+                  </Text>
+                  {year === selectedTaxYear && (
+                    <MaterialIcons name="check" size={24} color={isDark ? '#0a7ea4' : '#0a7ea4'} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </ScrollView>
   );
 }
@@ -161,6 +233,64 @@ const styles = StyleSheet.create({
   },
   subtitleDark: {
     color: '#9BA1A6',
+  },
+  taxYearSection: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+    marginBottom: 24,
+  },
+  taxYearSectionDark: {
+    backgroundColor: '#1f2937',
+    borderColor: '#374151',
+  },
+  taxYearHeader: {
+    marginBottom: 12,
+  },
+  taxYearLabel: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 4,
+    color: '#11181C',
+  },
+  taxYearLabelDark: {
+    color: '#ECEDEE',
+  },
+  taxYearDescription: {
+    fontSize: 14,
+    color: '#666',
+  },
+  taxYearDescriptionDark: {
+    color: '#9BA1A6',
+  },
+  taxYearPicker: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    padding: 16,
+    backgroundColor: '#f9fafb',
+  },
+  taxYearPickerDark: {
+    backgroundColor: '#374151',
+    borderColor: '#4b5563',
+  },
+  taxYearValue: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#11181C',
+  },
+  taxYearValueDark: {
+    color: '#ECEDEE',
   },
   menuSection: {
     backgroundColor: '#fff',
@@ -238,6 +368,43 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#ef4444',
+  },
+  pickerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pickerModal: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    width: '80%',
+    maxHeight: '60%',
+  },
+  pickerModalDark: {
+    backgroundColor: '#1f2937',
+  },
+  pickerOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  pickerOptionSelected: {
+    backgroundColor: '#f0f9ff',
+  },
+  pickerOptionText: {
+    fontSize: 16,
+    color: '#11181C',
+  },
+  pickerOptionTextDark: {
+    color: '#ECEDEE',
+  },
+  pickerOptionTextSelected: {
+    fontWeight: '600',
+    color: '#0a7ea4',
   },
 });
 
