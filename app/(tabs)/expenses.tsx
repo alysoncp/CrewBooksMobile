@@ -763,7 +763,7 @@ export default function Expenses() {
         onRequestClose={() => setIsModalOpen(false)}
       >
         <View style={[styles.modalContainer, isDark && styles.modalContainerDark]}>
-          <View style={styles.modalHeader}>
+          <View style={[styles.modalHeader, isDark && styles.modalHeaderDark]}>
             <Text style={[styles.modalTitle, isDark && styles.modalTitleDark]}>
               {editingExpense ? 'Edit Expense' : 'Add Expense'}
             </Text>
@@ -779,10 +779,10 @@ export default function Expenses() {
 
               <View style={styles.formGroup}>
                 <Text style={[styles.label, isDark && styles.labelDark]}>Base Cost</Text>
-                <View style={styles.currencyInput}>
+                <View style={[styles.currencyInput, isDark && styles.currencyInputDark]}>
                   <Text style={[styles.currencySymbol, isDark && styles.currencySymbolDark]}>$</Text>
                   <TextInput
-                    style={[styles.input, isDark && styles.inputDark]}
+                    style={[styles.input, styles.inputInCurrency, isDark && styles.inputDark]}
                     placeholder="0.00"
                     placeholderTextColor={isDark ? '#9BA1A6' : '#666'}
                     value={formData.baseCost}
@@ -808,10 +808,10 @@ export default function Expenses() {
                   />
                   <Text style={[styles.label, isDark && styles.labelDark]}>GST Amount</Text>
                 </View>
-                <View style={styles.currencyInput}>
+                <View style={[styles.currencyInput, isDark && styles.currencyInputDark]}>
                   <Text style={[styles.currencySymbol, isDark && styles.currencySymbolDark]}>$</Text>
                   <TextInput
-                    style={[styles.input, isDark && styles.inputDark, !formData.gstIncluded && styles.inputDisabled]}
+                    style={[styles.input, styles.inputInCurrency, isDark && styles.inputDark, !formData.gstIncluded && styles.inputDisabled]}
                     placeholder="0.00"
                     placeholderTextColor={isDark ? '#9BA1A6' : '#666'}
                     value={formData.gstAmount}
@@ -837,10 +837,10 @@ export default function Expenses() {
                   />
                   <Text style={[styles.label, isDark && styles.labelDark]}>PST Amount</Text>
                 </View>
-                <View style={styles.currencyInput}>
+                <View style={[styles.currencyInput, isDark && styles.currencyInputDark]}>
                   <Text style={[styles.currencySymbol, isDark && styles.currencySymbolDark]}>$</Text>
                   <TextInput
-                    style={[styles.input, isDark && styles.inputDark, !formData.pstIncluded && styles.inputDisabled]}
+                    style={[styles.input, styles.inputInCurrency, isDark && styles.inputDark, !formData.pstIncluded && styles.inputDisabled]}
                     placeholder="0.00"
                     placeholderTextColor={isDark ? '#9BA1A6' : '#666'}
                     value={formData.pstAmount}
@@ -856,10 +856,10 @@ export default function Expenses() {
 
               <View style={styles.formGroup}>
                 <Text style={[styles.label, isDark && styles.labelDark]}>Total</Text>
-                <View style={styles.currencyInput}>
+                <View style={[styles.currencyInput, isDark && styles.currencyInputDark]}>
                   <Text style={[styles.currencySymbol, isDark && styles.currencySymbolDark]}>$</Text>
                   <TextInput
-                    style={[styles.input, styles.inputBold, isDark && styles.inputDark]}
+                    style={[styles.input, styles.inputInCurrency, styles.inputBold, isDark && styles.inputDark]}
                     placeholder="0.00"
                     placeholderTextColor={isDark ? '#9BA1A6' : '#666'}
                     value={formData.total}
@@ -989,7 +989,7 @@ export default function Expenses() {
             </View>
           </ScrollView>
 
-          <View style={styles.modalFooter}>
+          <View style={[styles.modalFooter, isDark && styles.modalFooterDark]}>
             <TouchableOpacity
               style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
               onPress={handleSubmit}
@@ -1485,71 +1485,102 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  modalHeaderDark: {
+    backgroundColor: '#151718',
+    borderBottomColor: '#374151',
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 22,
+    fontWeight: '700',
     color: '#11181C',
+    letterSpacing: -0.5,
   },
   modalTitleDark: {
     color: '#ECEDEE',
   },
   modalContent: {
     flex: 1,
-    padding: 16,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 8,
   },
   costBreakdownSection: {
     backgroundColor: '#f9fafb',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 20,
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 24,
     borderWidth: 1,
     borderColor: '#e5e7eb',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
   },
   costBreakdownSectionDark: {
     backgroundColor: '#374151',
     borderColor: '#4b5563',
   },
   sectionLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 16,
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 20,
     color: '#11181C',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   sectionLabelDark: {
     color: '#ECEDEE',
   },
   formGroup: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '500',
-    marginBottom: 8,
-    color: '#11181C',
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 10,
+    color: '#374151',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   labelDark: {
-    color: '#ECEDEE',
+    color: '#9BA1A6',
   },
   helperText: {
     fontSize: 12,
-    color: '#666',
-    marginTop: 4,
+    color: '#6b7280',
+    marginTop: 6,
+    fontStyle: 'italic',
   },
   helperTextDark: {
     color: '#9BA1A6',
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 8,
-    padding: 12,
+    borderWidth: 1.5,
+    borderColor: '#d1d5db',
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     fontSize: 16,
     color: '#11181C',
     backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
   },
   inputDark: {
     backgroundColor: '#374151',
@@ -1562,6 +1593,17 @@ const styles = StyleSheet.create({
   inputDisabled: {
     opacity: 0.5,
   },
+  inputInCurrency: {
+    flex: 1,
+    borderWidth: 0,
+    shadowOpacity: 0,
+    elevation: 0,
+    paddingLeft: 4,
+    paddingRight: 0,
+    paddingVertical: 0,
+    backgroundColor: 'transparent',
+    minHeight: 20,
+  },
   textArea: {
     minHeight: 100,
     textAlignVertical: 'top',
@@ -1569,15 +1611,28 @@ const styles = StyleSheet.create({
   currencyInput: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: '#d1d5db',
+    borderRadius: 10,
     backgroundColor: '#fff',
+    paddingVertical: 14,
+    paddingRight: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  currencyInputDark: {
+    backgroundColor: '#374151',
+    borderColor: '#4b5563',
   },
   currencySymbol: {
-    paddingLeft: 12,
+    paddingLeft: 16,
+    paddingRight: 8,
     fontSize: 16,
-    color: '#666',
+    fontWeight: '600',
+    color: '#6b7280',
   },
   currencySymbolDark: {
     color: '#9BA1A6',
@@ -1585,18 +1640,24 @@ const styles = StyleSheet.create({
   switchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
+    gap: 10,
+    marginBottom: 10,
   },
   pickerButton: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 8,
-    padding: 12,
+    borderWidth: 1.5,
+    borderColor: '#d1d5db',
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
   },
   pickerButtonDark: {
     backgroundColor: '#374151',
@@ -1605,28 +1666,48 @@ const styles = StyleSheet.create({
   pickerButtonText: {
     fontSize: 16,
     color: '#11181C',
+    fontWeight: '500',
   },
   pickerButtonTextDark: {
     color: '#ECEDEE',
   },
   modalFooter: {
-    padding: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  modalFooterDark: {
+    backgroundColor: '#151718',
+    borderTopColor: '#374151',
   },
   submitButton: {
     backgroundColor: '#0a7ea4',
-    padding: 14,
-    borderRadius: 8,
+    paddingVertical: 16,
+    borderRadius: 10,
     alignItems: 'center',
+    shadowColor: '#0a7ea4',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   submitButtonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   submitButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   pickerOverlay: {
     flex: 1,

@@ -439,12 +439,21 @@ export default function Income() {
           </Text>
         </View>
         <TouchableOpacity
-          style={styles.addButton}
+          style={styles.fabButton}
           onPress={handleAddPress}
+          activeOpacity={0.8}
         >
-          <MaterialIcons name="add" size={18} color="#fff" />
-          <Text style={styles.addButtonText}>Add Income</Text>
+          <MaterialIcons name="add" size={28} color="#fff" />
         </TouchableOpacity>
+      </View>
+
+      <View style={styles.statsGrid}>
+        <View style={[styles.statCard, isDark && styles.statCardDark]}>
+          <Text style={[styles.statCardTitle, isDark && styles.statCardTitleDark]}>Total Income</Text>
+          <Text style={[styles.statCardValue, isDark && styles.statCardValueDark]}>
+            {formatCurrency(totalIncome)}
+          </Text>
+        </View>
       </View>
 
       <View style={[styles.card, isDark && styles.cardDark]}>
@@ -452,10 +461,10 @@ export default function Income() {
           <View style={styles.cardHeaderLeft}>
             <Text style={[styles.cardTitle, isDark && styles.cardTitleDark]}>Income History</Text>
             <Text style={[styles.cardDescription, isDark && styles.cardDescriptionDark]}>
-              Total for {taxYear}: <Text style={styles.totalAmount}>{formatCurrency(totalIncome)}</Text>
+              All recorded income for {taxYear}
             </Text>
           </View>
-          <View style={styles.searchContainer}>
+          <View style={[styles.searchContainer, isDark && styles.searchContainerDark]}>
             <MaterialIcons name="search" size={18} color={isDark ? '#9BA1A6' : '#666'} style={styles.searchIcon} />
             <TextInput
               style={[styles.searchInput, isDark && styles.searchInputDark]}
@@ -497,7 +506,7 @@ export default function Income() {
         onRequestClose={() => setIsModalOpen(false)}
       >
         <View style={[styles.modalContainer, isDark && styles.modalContainerDark]}>
-          <View style={styles.modalHeader}>
+          <View style={[styles.modalHeader, isDark && styles.modalHeaderDark]}>
             <Text style={[styles.modalTitle, isDark && styles.modalTitleDark]}>Add Income</Text>
             <TouchableOpacity onPress={() => setIsModalOpen(false)}>
               <MaterialIcons name="close" size={24} color={isDark ? '#ECEDEE' : '#11181C'} />
@@ -507,10 +516,10 @@ export default function Income() {
           <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
             <View style={styles.formGroup}>
               <Text style={[styles.label, isDark && styles.labelDark]}>Net Pay *</Text>
-              <View style={styles.currencyInput}>
+              <View style={[styles.currencyInput, isDark && styles.currencyInputDark]}>
                 <Text style={[styles.currencySymbol, isDark && styles.currencySymbolDark]}>$</Text>
                 <TextInput
-                  style={[styles.input, isDark && styles.inputDark]}
+                  style={[styles.input, styles.inputInCurrency, isDark && styles.inputDark]}
                   placeholder="0.00"
                   placeholderTextColor={isDark ? '#9BA1A6' : '#666'}
                   value={formData.amount}
@@ -586,10 +595,10 @@ export default function Income() {
             {hasGstNumber && (
               <View style={styles.formGroup}>
                 <Text style={[styles.label, isDark && styles.labelDark]}>GST/HST Collected</Text>
-                <View style={styles.currencyInput}>
+                <View style={[styles.currencyInput, isDark && styles.currencyInputDark]}>
                   <Text style={[styles.currencySymbol, isDark && styles.currencySymbolDark]}>$</Text>
                   <TextInput
-                    style={[styles.input, isDark && styles.inputDark]}
+                    style={[styles.input, styles.inputInCurrency, isDark && styles.inputDark]}
                     placeholder="0.00"
                     placeholderTextColor={isDark ? '#9BA1A6' : '#666'}
                     value={formData.gstHstCollected}
@@ -647,10 +656,10 @@ export default function Income() {
 
             <View style={styles.formGroup}>
               <Text style={[styles.label, isDark && styles.labelDark]}>Buyout</Text>
-              <View style={styles.currencyInput}>
+              <View style={[styles.currencyInput, isDark && styles.currencyInputDark]}>
                 <Text style={[styles.currencySymbol, isDark && styles.currencySymbolDark]}>$</Text>
                 <TextInput
-                  style={[styles.input, isDark && styles.inputDark]}
+                  style={[styles.input, styles.inputInCurrency, isDark && styles.inputDark]}
                   placeholder="0.00"
                   placeholderTextColor={isDark ? '#9BA1A6' : '#666'}
                   value={formData.buyout}
@@ -662,10 +671,10 @@ export default function Income() {
 
             <View style={styles.formGroup}>
               <Text style={[styles.label, isDark && styles.labelDark]}>Pension</Text>
-              <View style={styles.currencyInput}>
+              <View style={[styles.currencyInput, isDark && styles.currencyInputDark]}>
                 <Text style={[styles.currencySymbol, isDark && styles.currencySymbolDark]}>$</Text>
                 <TextInput
-                  style={[styles.input, isDark && styles.inputDark]}
+                  style={[styles.input, styles.inputInCurrency, isDark && styles.inputDark]}
                   placeholder="0.00"
                   placeholderTextColor={isDark ? '#9BA1A6' : '#666'}
                   value={formData.pension}
@@ -677,10 +686,10 @@ export default function Income() {
 
             <View style={styles.formGroup}>
               <Text style={[styles.label, isDark && styles.labelDark]}>Insurance</Text>
-              <View style={styles.currencyInput}>
+              <View style={[styles.currencyInput, isDark && styles.currencyInputDark]}>
                 <Text style={[styles.currencySymbol, isDark && styles.currencySymbolDark]}>$</Text>
                 <TextInput
-                  style={[styles.input, isDark && styles.inputDark]}
+                  style={[styles.input, styles.inputInCurrency, isDark && styles.inputDark]}
                   placeholder="0.00"
                   placeholderTextColor={isDark ? '#9BA1A6' : '#666'}
                   value={formData.insurance}
@@ -691,7 +700,7 @@ export default function Income() {
             </View>
           </ScrollView>
 
-          <View style={styles.modalFooter}>
+          <View style={[styles.modalFooter, isDark && styles.modalFooterDark]}>
             <TouchableOpacity
               style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
               onPress={handleSubmit}
@@ -814,19 +823,18 @@ const styles = StyleSheet.create({
   subtitleDark: {
     color: '#9BA1A6',
   },
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  fabButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: '#0a7ea4',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-    gap: 8,
-  },
-  addButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
   },
   card: {
     backgroundColor: '#fff',
@@ -872,9 +880,62 @@ const styles = StyleSheet.create({
   cardDescriptionDark: {
     color: '#9BA1A6',
   },
-  totalAmount: {
-    fontFamily: 'monospace',
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    gap: 12,
+  },
+  statCard: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 16,
+    minWidth: '30%',
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  statCardDark: {
+    backgroundColor: '#1f2937',
+    borderColor: '#374151',
+  },
+  statCardTitle: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '500',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  statCardTitleDark: {
+    color: '#9BA1A6',
+  },
+  statCardValue: {
+    fontSize: 20,
     fontWeight: '600',
+    fontFamily: 'monospace',
+    color: '#11181C',
+  },
+  statCardValueDark: {
+    color: '#ECEDEE',
+  },
+  statCardValueGreen: {
+    color: '#10b981',
+  },
+  statCardValueGreenDark: {
+    color: '#10b981',
+  },
+  statCardValueBlue: {
+    color: '#3b82f6',
+  },
+  statCardValueBlueDark: {
+    color: '#60a5fa',
   },
   searchContainer: {
     flexDirection: 'row',
@@ -887,6 +948,10 @@ const styles = StyleSheet.create({
     minWidth: 200,
     maxWidth: 300,
   },
+  searchContainerDark: {
+    backgroundColor: '#374151',
+    borderColor: '#4b5563',
+  },
   searchIcon: {
     marginRight: 8,
   },
@@ -898,7 +963,7 @@ const styles = StyleSheet.create({
   },
   searchInputDark: {
     color: '#ECEDEE',
-    backgroundColor: '#374151',
+    backgroundColor: 'transparent',
   },
   loader: {
     marginVertical: 32,
@@ -1125,60 +1190,107 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  modalHeaderDark: {
+    backgroundColor: '#151718',
+    borderBottomColor: '#374151',
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 22,
+    fontWeight: '700',
     color: '#11181C',
+    letterSpacing: -0.5,
   },
   modalTitleDark: {
     color: '#ECEDEE',
   },
   modalContent: {
     flex: 1,
-    padding: 16,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 8,
   },
   formGroup: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '500',
-    marginBottom: 8,
-    color: '#11181C',
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 10,
+    color: '#374151',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   labelDark: {
-    color: '#ECEDEE',
+    color: '#9BA1A6',
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 8,
-    padding: 12,
+    borderWidth: 1.5,
+    borderColor: '#d1d5db',
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     fontSize: 16,
     color: '#11181C',
     backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
   },
   inputDark: {
     backgroundColor: '#374151',
     borderColor: '#4b5563',
     color: '#ECEDEE',
   },
+  inputInCurrency: {
+    flex: 1,
+    borderWidth: 0,
+    shadowOpacity: 0,
+    elevation: 0,
+    paddingLeft: 4,
+    paddingRight: 0,
+    paddingVertical: 0,
+    backgroundColor: 'transparent',
+    minHeight: 20,
+  },
   currencyInput: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: '#d1d5db',
+    borderRadius: 10,
     backgroundColor: '#fff',
+    paddingVertical: 14,
+    paddingRight: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  currencyInputDark: {
+    backgroundColor: '#374151',
+    borderColor: '#4b5563',
   },
   currencySymbol: {
-    paddingLeft: 12,
+    paddingLeft: 16,
+    paddingRight: 8,
     fontSize: 16,
-    color: '#666',
+    fontWeight: '600',
+    color: '#6b7280',
   },
   currencySymbolDark: {
     color: '#9BA1A6',
@@ -1187,11 +1299,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 8,
-    padding: 12,
+    borderWidth: 1.5,
+    borderColor: '#d1d5db',
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
   },
   pickerButtonDark: {
     backgroundColor: '#374151',
@@ -1200,28 +1318,48 @@ const styles = StyleSheet.create({
   pickerButtonText: {
     fontSize: 16,
     color: '#11181C',
+    fontWeight: '500',
   },
   pickerButtonTextDark: {
     color: '#ECEDEE',
   },
   modalFooter: {
-    padding: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  modalFooterDark: {
+    backgroundColor: '#151718',
+    borderTopColor: '#374151',
   },
   submitButton: {
     backgroundColor: '#0a7ea4',
-    padding: 14,
-    borderRadius: 8,
+    paddingVertical: 16,
+    borderRadius: 10,
     alignItems: 'center',
+    shadowColor: '#0a7ea4',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   submitButtonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   submitButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   pickerOverlay: {
     flex: 1,
