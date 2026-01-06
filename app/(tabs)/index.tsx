@@ -3,7 +3,8 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { apiGet } from '@/lib/api';
 import { formatCurrency, formatPercent, getCategoryLabel, getYearFromDateString } from '@/lib/format';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useEffect, useMemo, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { PieChart } from 'react-native-chart-kit';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -100,33 +101,35 @@ export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setIsLoading(true);
-        const dashboardData = await apiGet<DashboardData>('/api/dashboard');
-        setData(dashboardData);
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-        setData({
-          income: [],
-          expenses: [],
-          taxCalculation: {
-            grossIncome: 0,
-            federalTax: 0,
-            provincialTax: 0,
-            cppContribution: 0,
-          },
-          monthlyData: [],
-          expensesByCategory: [],
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  useFocusEffect(
+    useCallback(() => {
+      const fetchDashboardData = async () => {
+        try {
+          setIsLoading(true);
+          const dashboardData = await apiGet<DashboardData>('/api/dashboard');
+          setData(dashboardData);
+        } catch (error) {
+          console.error('Error fetching dashboard data:', error);
+          setData({
+            income: [],
+            expenses: [],
+            taxCalculation: {
+              grossIncome: 0,
+              federalTax: 0,
+              provincialTax: 0,
+              cppContribution: 0,
+            },
+            monthlyData: [],
+            expensesByCategory: [],
+          });
+        } finally {
+          setIsLoading(false);
+        }
+      };
 
-    fetchDashboardData();
-  }, []);
+      fetchDashboardData();
+    }, [taxYear])
+  );
 
   // Filter income and expenses by selected year
   const filteredIncome = useMemo(() => {
