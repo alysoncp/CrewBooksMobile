@@ -71,6 +71,7 @@ export default function Income() {
   const [incomeList, setIncomeList] = useState<Income[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingIncome, setEditingIncome] = useState<Income | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [customAccountingOffice, setCustomAccountingOffice] = useState('');
   const [showIncomeTypePicker, setShowIncomeTypePicker] = useState(false);
@@ -125,6 +126,20 @@ export default function Income() {
   }, [incomeList, taxYear, searchQuery]);
 
   const totalIncome = filteredIncome.reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0);
+  
+  const totalDeductions = filteredIncome.reduce((sum, item) => {
+    const dues = item.dues ? parseFloat(item.dues.toString()) : 0;
+    const retirement = item.retirement ? parseFloat(item.retirement.toString()) : 0;
+    const labour = item.labour ? parseFloat(item.labour.toString()) : 0;
+    const buyout = item.buyout ? parseFloat(item.buyout.toString()) : 0;
+    const pension = item.pension ? parseFloat(item.pension.toString()) : 0;
+    const insurance = item.insurance ? parseFloat(item.insurance.toString()) : 0;
+    return sum + dues + retirement + labour + buyout + pension + insurance;
+  }, 0);
+  
+  const totalGstHstCollected = filteredIncome.reduce((sum, item) => {
+    return sum + (item.gstHstCollected ? parseFloat(item.gstHstCollected.toString()) : 0);
+  }, 0);
 
   const handleSubmit = async () => {
     // Validation
@@ -160,25 +175,18 @@ export default function Income() {
         insurance: formData.insurance ? parseFloat(formData.insurance) : null,
       };
 
-      await apiRequest('POST', '/api/income', payload);
-      await fetchIncome();
+      if (editingIncome) {
+        await apiRequest('PATCH', `/api/income/${editingIncome.id}`, payload);
+        Alert.alert('Success', 'Income updated successfully');
+      } else {
+        await apiRequest('POST', '/api/income', payload);
+        Alert.alert('Success', 'Income added successfully');
+      }
+
       setIsModalOpen(false);
-      setFormData({
-        amount: '',
-        date: getTodayLocalDateString(),
-        incomeType: '',
-        productionName: '',
-        accountingOffice: '',
-        gstHstCollected: '',
-        dues: '',
-        retirement: '',
-        labour: '',
-        buyout: '',
-        pension: '',
-        insurance: '',
-      });
-      setCustomAccountingOffice('');
-      Alert.alert('Success', 'Income added successfully');
+      setEditingIncome(null);
+      resetFormData();
+      await fetchIncome();
     } catch (error) {
       console.error('Error adding income:', error);
       Alert.alert('Error', 'Failed to add income. Please try again.');
@@ -230,10 +238,36 @@ export default function Income() {
       insurance: '',
     });
     setCustomAccountingOffice('');
+    setEditingIncome(null);
   };
 
   const openIncomeForm = () => {
     resetFormData();
+    setIsModalOpen(true);
+  };
+
+  const handleEdit = (income: Income) => {
+    setEditingIncome(income);
+    setFormData({
+      amount: parseFloat(income.amount.toString()).toFixed(2),
+      date: income.date,
+      incomeType: income.incomeType,
+      productionName: income.productionName || '',
+      accountingOffice: income.accountingOffice || '',
+      gstHstCollected: income.gstHstCollected ? parseFloat(income.gstHstCollected.toString()).toFixed(2) : '',
+      dues: income.dues ? parseFloat(income.dues.toString()).toFixed(2) : '',
+      retirement: income.retirement ? parseFloat(income.retirement.toString()).toFixed(2) : '',
+      labour: income.labour ? parseFloat(income.labour.toString()).toFixed(2) : '',
+      buyout: income.buyout ? parseFloat(income.buyout.toString()).toFixed(2) : '',
+      pension: income.pension ? parseFloat(income.pension.toString()).toFixed(2) : '',
+      insurance: income.insurance ? parseFloat(income.insurance.toString()).toFixed(2) : '',
+    });
+    if (income.accountingOffice && !ACCOUNTING_OFFICES.find((o) => o.value === income.accountingOffice)) {
+      setCustomAccountingOffice(income.accountingOffice);
+      setFormData((prev) => ({ ...prev, accountingOffice: 'other' }));
+    } else {
+      setCustomAccountingOffice('');
+    }
     setIsModalOpen(true);
   };
 
@@ -414,6 +448,12 @@ export default function Income() {
       <View style={[styles.incomeCardFooter, isDark && styles.incomeCardFooterDark]}>
         <View style={styles.incomeCardActions}>
           <TouchableOpacity
+            onPress={() => handleEdit(item)}
+            style={styles.incomeActionButton}
+          >
+            <MaterialIcons name="edit" size={20} color={isDark ? '#9BA1A6' : '#666'} />
+          </TouchableOpacity>
+          <TouchableOpacity
             onPress={() => handleDelete(item.id)}
             disabled={deleteId === item.id}
             style={styles.incomeActionButton}
@@ -454,6 +494,20 @@ export default function Income() {
             {formatCurrency(totalIncome)}
           </Text>
         </View>
+        <View style={[styles.statCard, isDark && styles.statCardDark]}>
+          <Text style={[styles.statCardTitle, isDark && styles.statCardTitleDark]}>Total Deductions</Text>
+          <Text style={[styles.statCardValue, styles.statCardValueGreen, isDark && styles.statCardValueGreenDark]}>
+            {formatCurrency(totalDeductions)}
+          </Text>
+        </View>
+        {hasGstNumber && totalGstHstCollected > 0 && (
+          <View style={[styles.statCard, isDark && styles.statCardDark]}>
+            <Text style={[styles.statCardTitle, isDark && styles.statCardTitleDark]}>GST/HST Collected</Text>
+            <Text style={[styles.statCardValue, styles.statCardValueBlue, isDark && styles.statCardValueBlueDark]}>
+              {formatCurrency(totalGstHstCollected)}
+            </Text>
+          </View>
+        )}
       </View>
 
       <View style={[styles.card, isDark && styles.cardDark]}>
@@ -507,7 +561,9 @@ export default function Income() {
       >
         <View style={[styles.modalContainer, isDark && styles.modalContainerDark]}>
           <View style={[styles.modalHeader, isDark && styles.modalHeaderDark]}>
-            <Text style={[styles.modalTitle, isDark && styles.modalTitleDark]}>Add Income</Text>
+            <Text style={[styles.modalTitle, isDark && styles.modalTitleDark]}>
+              {editingIncome ? 'Edit Income' : 'Add Income'}
+            </Text>
             <TouchableOpacity onPress={() => setIsModalOpen(false)}>
               <MaterialIcons name="close" size={24} color={isDark ? '#ECEDEE' : '#11181C'} />
             </TouchableOpacity>
@@ -709,7 +765,9 @@ export default function Income() {
               {isSubmitting ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text style={styles.submitButtonText}>Save Income</Text>
+                <Text style={styles.submitButtonText}>
+                  {editingIncome ? 'Update Income' : 'Save Income'}
+                </Text>
               )}
             </TouchableOpacity>
           </View>
