@@ -78,8 +78,7 @@ export default function More() {
       title: 'About',
       icon: 'info-outline',
       onPress: () => {
-        // TODO: Navigate to about page when available
-        Alert.alert('About', 'About page coming soon');
+        router.push('/about');
       },
       showChevron: true,
     },
