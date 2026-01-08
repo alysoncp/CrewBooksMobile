@@ -6,6 +6,7 @@ import { formatCurrency, formatDate, getCategoryLabel, getTodayLocalDateString, 
 import { type Expense, type Vehicle } from '@/lib/types';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -89,6 +90,7 @@ export default function Expenses() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { user } = useAuth();
   const { taxYear } = useTaxYear();
   const hasGstNumber = user?.hasGstNumber === true;
@@ -449,6 +451,14 @@ export default function Expenses() {
               )}
             </View>
             <View style={styles.expenseCardActions}>
+              {item.receiptId && (
+                <TouchableOpacity
+                  onPress={() => router.push('/receipt-gallery')}
+                  style={styles.expenseActionButton}
+                >
+                  <MaterialIcons name="receipt" size={20} color={isDark ? '#9BA1A6' : '#666'} />
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 onPress={() => handleEdit(item)}
                 style={styles.expenseActionButton}
@@ -691,6 +701,27 @@ export default function Expenses() {
           </Text>
         </View>
       </View>
+
+      <TouchableOpacity
+        style={[styles.receiptGalleryCard, isDark && styles.receiptGalleryCardDark]}
+        onPress={() => router.push('/receipt-gallery')}
+        activeOpacity={0.7}
+      >
+        <View style={styles.receiptGalleryCardContent}>
+          <View style={[styles.receiptGalleryIcon, isDark && styles.receiptGalleryIconDark]}>
+            <MaterialIcons name="photo-library" size={24} color={isDark ? '#ECEDEE' : '#11181C'} />
+          </View>
+          <View style={styles.receiptGalleryText}>
+            <Text style={[styles.receiptGalleryTitle, isDark && styles.receiptGalleryTitleDark]}>
+              Receipt Gallery
+            </Text>
+            <Text style={[styles.receiptGalleryDescription, isDark && styles.receiptGalleryDescriptionDark]}>
+              View and manage your receipt images
+            </Text>
+          </View>
+          <MaterialIcons name="chevron-right" size={24} color={isDark ? '#9BA1A6' : '#666'} />
+        </View>
+      </TouchableOpacity>
 
       <View style={[styles.card, isDark && styles.cardDark]}>
         <View style={styles.cardHeader}>
@@ -1714,6 +1745,59 @@ const styles = StyleSheet.create({
   },
   pickerOptionTextDark: {
     color: '#ECEDEE',
+  },
+  receiptGalleryCard: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 16,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  receiptGalleryCardDark: {
+    backgroundColor: '#1f2937',
+    borderColor: '#374151',
+  },
+  receiptGalleryCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  receiptGalleryIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: '#f3f4f6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  receiptGalleryIconDark: {
+    backgroundColor: '#374151',
+  },
+  receiptGalleryText: {
+    flex: 1,
+  },
+  receiptGalleryTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#11181C',
+    marginBottom: 2,
+  },
+  receiptGalleryTitleDark: {
+    color: '#ECEDEE',
+  },
+  receiptGalleryDescription: {
+    fontSize: 14,
+    color: '#666',
+  },
+  receiptGalleryDescriptionDark: {
+    color: '#9BA1A6',
   },
 });
 

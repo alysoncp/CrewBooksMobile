@@ -433,6 +433,14 @@ export default function Income() {
       
       <View style={[styles.incomeCardFooter, isDark && styles.incomeCardFooterDark]}>
         <View style={styles.incomeCardActions}>
+          {item.paystubId && (
+            <TouchableOpacity
+              onPress={() => router.push('/paystub-gallery')}
+              style={styles.incomeActionButton}
+            >
+              <MaterialIcons name="receipt" size={20} color={isDark ? '#9BA1A6' : '#666'} />
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             onPress={() => handleEdit(item)}
             style={styles.incomeActionButton}

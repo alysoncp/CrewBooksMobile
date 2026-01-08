@@ -7,26 +7,26 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    FlatList,
-    Image,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  FlatList,
+  Image,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-interface Paystub {
+interface Receipt {
   id: string;
   filename: string;
   imageUrl: string;
   uploadedAt: string;
-  incomeId?: string;
+  expenseId?: string;
   notes?: string;
   [key: string]: any;
 }
@@ -36,60 +36,57 @@ const CARD_MARGIN = 16;
 const CARDS_PER_ROW = 2;
 const CARD_SIZE = (width - 32 - CARD_MARGIN * (CARDS_PER_ROW - 1)) / CARDS_PER_ROW;
 
-export default function PaystubGallery() {
+export default function ReceiptGallery() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { taxYear } = useTaxYear();
 
-  const [paystubs, setPaystubs] = useState<Paystub[]>([]);
+  const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedPaystub, setSelectedPaystub] = useState<Paystub | null>(null);
+  const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [deleteLinkedIncome, setDeleteLinkedIncome] = useState(false);
+  const [deleteLinkedExpense, setDeleteLinkedExpense] = useState(false);
   const [pressedCardId, setPressedCardId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchPaystubs();
+    fetchReceipts();
   }, [taxYear]);
 
-  const fetchPaystubs = async () => {
+  const fetchReceipts = async () => {
     try {
       setIsLoading(true);
-      // Try to fetch paystubs - adjust endpoint based on your API
-      const data = await apiGet<Paystub[]>('/api/paystubs');
+      const data = await apiGet<Receipt[]>('/api/receipts');
       if (__DEV__) {
-        console.log('Fetched paystubs:', data);
+        console.log('Fetched receipts:', data);
         if (data && data.length > 0) {
-          console.log('First paystub imageUrl:', data[0].imageUrl);
+          console.log('First receipt imageUrl:', data[0].imageUrl);
         }
       }
-      setPaystubs(data || []);
+      setReceipts(data || []);
     } catch (error: any) {
-      console.error('Error fetching paystubs:', error);
-      // If endpoint doesn't exist yet, show empty state
+      console.error('Error fetching receipts:', error);
       if (!error.message?.includes('404')) {
-        Alert.alert('Error', 'Failed to load paystubs. Please try again.');
+        Alert.alert('Error', 'Failed to load receipts. Please try again.');
       }
-      setPaystubs([]);
+      setReceipts([]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleDelete = async (paystub: Paystub) => {
-    const linkedIncome = !!paystub.incomeId;
-    setDeleteLinkedIncome(false);
+  const handleDelete = async (receipt: Receipt) => {
+    const linkedExpense = !!receipt.expenseId;
+    setDeleteLinkedExpense(false);
 
-    // Create alert content
-    const alertMessage = linkedIncome
-      ? `This will permanently remove this paystub image. This action cannot be undone.\n\nThis paystub is linked to an income entry.`
-      : 'This will permanently remove this paystub image. This action cannot be undone.';
+    const alertMessage = linkedExpense
+      ? `This will permanently remove this receipt image. This action cannot be undone.\n\nThis receipt is linked to an expense entry.`
+      : 'This will permanently remove this receipt image. This action cannot be undone.';
 
     Alert.alert(
-      'Delete Paystub?',
+      'Delete Receipt?',
       alertMessage,
       [
         { text: 'Cancel', style: 'cancel' },
@@ -97,26 +94,25 @@ export default function PaystubGallery() {
           text: 'Delete',
           style: 'destructive',
           onPress: () => {
-            // If linked to income, show a second prompt for the checkbox option
-            if (linkedIncome) {
+            if (linkedExpense) {
               Alert.alert(
-                'Delete Linked Income?',
-                'Would you also like to delete the linked income entry?',
+                'Delete Linked Expense?',
+                'Would you also like to delete the linked expense entry?',
                 [
                   {
-                    text: 'No, keep income entry',
+                    text: 'No, keep expense entry',
                     style: 'cancel',
-                    onPress: () => handleDeleteConfirm(paystub, false),
+                    onPress: () => handleDeleteConfirm(receipt, false),
                   },
                   {
                     text: 'Yes, delete both',
                     style: 'destructive',
-                    onPress: () => handleDeleteConfirm(paystub, true),
+                    onPress: () => handleDeleteConfirm(receipt, true),
                   },
                 ]
               );
             } else {
-              handleDeleteConfirm(paystub, false);
+              handleDeleteConfirm(receipt, false);
             }
           },
         },
@@ -124,70 +120,68 @@ export default function PaystubGallery() {
     );
   };
 
-  const handleDeleteConfirm = async (paystub: Paystub, deleteLinked: boolean) => {
+  const handleDeleteConfirm = async (receipt: Receipt, deleteLinked: boolean) => {
     try {
-      setDeleteId(paystub.id);
+      setDeleteId(receipt.id);
       const payload = deleteLinked ? { deleteLinked: true } : undefined;
-      await apiRequest('DELETE', `/api/paystubs/${paystub.id}`, payload);
-      await fetchPaystubs();
-      if (selectedPaystub?.id === paystub.id) {
-        setSelectedPaystub(null);
+      await apiRequest('DELETE', `/api/receipts/${receipt.id}`, payload);
+      await fetchReceipts();
+      if (selectedReceipt?.id === receipt.id) {
+        setSelectedReceipt(null);
         setIsImageModalOpen(false);
       }
-      Alert.alert('Success', 'Paystub deleted successfully');
+      Alert.alert('Success', 'Receipt deleted successfully');
     } catch (error) {
-      console.error('Error deleting paystub:', error);
-      Alert.alert('Error', 'Failed to delete paystub. Please try again.');
+      console.error('Error deleting receipt:', error);
+      Alert.alert('Error', 'Failed to delete receipt. Please try again.');
     } finally {
       setDeleteId(null);
-      setDeleteLinkedIncome(false);
+      setDeleteLinkedExpense(false);
     }
   };
 
   const getImageUrl = (imageUrl: string) => {
-    // If the URL is already absolute (starts with http), use it as is
     if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
       return imageUrl;
     }
-    // Otherwise, prepend the API URL
     return `${API_URL}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
   };
 
-  const openImageModal = (paystub: Paystub) => {
-    setSelectedPaystub(paystub);
+  const openImageModal = (receipt: Receipt) => {
+    setSelectedReceipt(receipt);
     setIsImageModalOpen(true);
   };
 
-  const renderPaystubCard = ({ item }: { item: Paystub }) => {
+  const renderReceiptCard = ({ item }: { item: Receipt }) => {
     const isPressed = pressedCardId === item.id;
 
     return (
-      <View style={styles.paystubCardWrapper}>
+      <View style={styles.receiptCardWrapper}>
         <TouchableOpacity
-          style={[styles.paystubCard, isDark && styles.paystubCardDark]}
+          style={[styles.receiptCard, isDark && styles.receiptCardDark]}
           onPress={() => openImageModal(item)}
           onPressIn={() => setPressedCardId(item.id)}
           onPressOut={() => setPressedCardId(null)}
           activeOpacity={0.9}
         >
-          <View style={[styles.paystubImageContainer, isDark && styles.paystubImageContainerDark]}>
+          <View style={[styles.receiptImageContainer, isDark && styles.receiptImageContainerDark]}>
             <Image
               source={{ uri: getImageUrl(item.imageUrl) }}
-              style={styles.paystubImage}
+              style={styles.receiptImage}
               resizeMode="cover"
               onError={(error) => {
-                console.error('Error loading paystub image:', error.nativeEvent.error, 'URL:', getImageUrl(item.imageUrl));
+                console.error('Error loading receipt image:', error.nativeEvent.error, 'URL:', getImageUrl(item.imageUrl));
               }}
             />
             <View
               style={[
-                styles.paystubOverlay,
-                isDark && styles.paystubOverlayDark,
-                isPressed && styles.paystubOverlayVisible,
+                styles.receiptOverlay,
+                isDark && styles.receiptOverlayDark,
+                isPressed && styles.receiptOverlayVisible,
               ]}
             >
               <TouchableOpacity
-                style={[styles.paystubActionButton, isDark && styles.paystubActionButtonDark]}
+                style={[styles.receiptActionButton, isDark && styles.receiptActionButtonDark]}
                 onPress={(e) => {
                   e.stopPropagation();
                   setPressedCardId(null);
@@ -197,7 +191,7 @@ export default function PaystubGallery() {
                 <MaterialIcons name="zoom-in" size={16} color={isDark ? '#ECEDEE' : '#11181C'} />
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.paystubActionButton, styles.paystubDeleteButton]}
+                style={[styles.receiptActionButton, styles.receiptDeleteButton]}
                 onPress={(e) => {
                   e.stopPropagation();
                   setPressedCardId(null);
@@ -215,14 +209,14 @@ export default function PaystubGallery() {
           </View>
           {item.notes && (
             <Text
-              style={[styles.paystubNotes, isDark && styles.paystubNotesDark]}
+              style={[styles.receiptNotes, isDark && styles.receiptNotesDark]}
               numberOfLines={1}
             >
               {item.notes}
             </Text>
           )}
           {item.uploadedAt && (
-            <Text style={[styles.paystubDate, isDark && styles.paystubDateDark]}>
+            <Text style={[styles.receiptDate, isDark && styles.receiptDateDark]}>
               {formatDate(item.uploadedAt)}
             </Text>
           )}
@@ -235,13 +229,13 @@ export default function PaystubGallery() {
     <View style={[styles.container, isDark && styles.containerDark]}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <View style={styles.headerLeft}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <MaterialIcons name="arrow-back" size={24} color={isDark ? '#ECEDEE' : '#11181C'} />
           </TouchableOpacity>
           <View style={styles.headerText}>
-            <Text style={[styles.title, isDark && styles.titleDark]}>Paystub Gallery</Text>
+            <Text style={[styles.title, isDark && styles.titleDark]}>Receipt Gallery</Text>
             <Text style={[styles.subtitle, isDark && styles.subtitleDark]}>
-              {paystubs?.length || 0} paystub{(paystubs?.length || 0) !== 1 ? 's' : ''} uploaded
+              {receipts?.length || 0} receipt{(receipts?.length || 0) !== 1 ? 's' : ''} uploaded
             </Text>
           </View>
         </View>
@@ -251,22 +245,22 @@ export default function PaystubGallery() {
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color={isDark ? '#9BA1A6' : '#666'} />
         </View>
-      ) : paystubs.length === 0 ? (
+      ) : receipts.length === 0 ? (
         <View style={styles.emptyState}>
           <View style={[styles.emptyStateIcon, isDark && styles.emptyStateIconDark]}>
             <MaterialIcons name="description" size={32} color={isDark ? '#9BA1A6' : '#666'} />
           </View>
           <Text style={[styles.emptyStateTitle, isDark && styles.emptyStateTitleDark]}>
-            No paystubs uploaded
+            No receipts uploaded
           </Text>
           <Text style={[styles.emptyStateText, isDark && styles.emptyStateTextDark]}>
-            Upload photos of your paystubs to keep them organized
+            Upload photos of your receipts to keep them organized
           </Text>
         </View>
       ) : (
         <FlatList
-          data={paystubs}
-          renderItem={renderPaystubCard}
+          data={receipts}
+          renderItem={renderReceiptCard}
           keyExtractor={(item) => item.id}
           numColumns={CARDS_PER_ROW}
           contentContainerStyle={styles.listContent}
@@ -289,18 +283,18 @@ export default function PaystubGallery() {
             onPress={() => setIsImageModalOpen(false)}
           >
             <View style={styles.imageModalContent}>
-              {selectedPaystub && (
+              {selectedReceipt && (
                 <>
                   <View style={[styles.imageModalHeader, { paddingTop: insets.top + 16 }]}>
                     <View style={styles.imageModalHeaderInfo}>
-                      {selectedPaystub.notes && (
+                      {selectedReceipt.notes && (
                         <Text style={[styles.imageModalTitle, isDark && styles.imageModalTitleDark]}>
-                          {selectedPaystub.notes}
+                          {selectedReceipt.notes}
                         </Text>
                       )}
-                      {selectedPaystub.uploadedAt && (
+                      {selectedReceipt.uploadedAt && (
                         <Text style={[styles.imageModalDate, isDark && styles.imageModalDateDark]}>
-                          {formatDate(selectedPaystub.uploadedAt)}
+                          {formatDate(selectedReceipt.uploadedAt)}
                         </Text>
                       )}
                     </View>
@@ -318,11 +312,11 @@ export default function PaystubGallery() {
                     minimumZoomScale={1}
                   >
                     <Image
-                      source={{ uri: getImageUrl(selectedPaystub.imageUrl) }}
+                      source={{ uri: getImageUrl(selectedReceipt.imageUrl) }}
                       style={styles.imageModalImage}
                       resizeMode="contain"
                       onError={(error) => {
-                        console.error('Error loading paystub image in modal:', error.nativeEvent.error, 'URL:', getImageUrl(selectedPaystub.imageUrl));
+                        console.error('Error loading receipt image in modal:', error.nativeEvent.error, 'URL:', getImageUrl(selectedReceipt.imageUrl));
                       }}
                     />
                   </ScrollView>
@@ -330,13 +324,13 @@ export default function PaystubGallery() {
                     <TouchableOpacity
                       style={[styles.imageModalDeleteButton, isDark && styles.imageModalDeleteButtonDark]}
                       onPress={() => {
-                        if (selectedPaystub) {
-                          handleDelete(selectedPaystub);
+                        if (selectedReceipt) {
+                          handleDelete(selectedReceipt);
                         }
                       }}
-                      disabled={deleteId === selectedPaystub.id}
+                      disabled={deleteId === selectedReceipt.id}
                     >
-                      {deleteId === selectedPaystub.id ? (
+                      {deleteId === selectedReceipt.id ? (
                         <ActivityIndicator size="small" color="#ef4444" />
                       ) : (
                         <>
@@ -442,17 +436,17 @@ const styles = StyleSheet.create({
   row: {
     justifyContent: 'space-between',
   },
-  paystubCardWrapper: {
+  receiptCardWrapper: {
     width: CARD_SIZE,
     marginBottom: CARD_MARGIN,
   },
-  paystubCard: {
+  receiptCard: {
     width: '100%',
   },
-  paystubCardDark: {
+  receiptCardDark: {
     // No special styling needed
   },
-  paystubImageContainer: {
+  receiptImageContainer: {
     width: '100%',
     aspectRatio: 1,
     borderRadius: 8,
@@ -460,14 +454,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#f3f4f6',
     marginBottom: 8,
   },
-  paystubImageContainerDark: {
+  receiptImageContainerDark: {
     backgroundColor: '#374151',
   },
-  paystubImage: {
+  receiptImage: {
     width: '100%',
     height: '100%',
   },
-  paystubOverlay: {
+  receiptOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
@@ -480,13 +474,13 @@ const styles = StyleSheet.create({
     gap: 8,
     opacity: 0,
   },
-  paystubOverlayVisible: {
+  receiptOverlayVisible: {
     opacity: 1,
   },
-  paystubOverlayDark: {
+  receiptOverlayDark: {
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
   },
-  paystubActionButton: {
+  receiptActionButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
@@ -494,26 +488,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  paystubActionButtonDark: {
+  receiptActionButtonDark: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
-  paystubDeleteButton: {
+  receiptDeleteButton: {
     backgroundColor: 'rgba(239, 68, 68, 0.9)',
   },
-  paystubNotes: {
+  receiptNotes: {
     fontSize: 12,
     color: '#666',
     marginTop: 4,
     marginBottom: 2,
   },
-  paystubNotesDark: {
+  receiptNotesDark: {
     color: '#9BA1A6',
   },
-  paystubDate: {
+  receiptDate: {
     fontSize: 12,
     color: '#666',
   },
-  paystubDateDark: {
+  receiptDateDark: {
     color: '#9BA1A6',
   },
   imageModalContainer: {
