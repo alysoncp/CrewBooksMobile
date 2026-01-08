@@ -50,20 +50,18 @@ export default function More() {
 
   const menuItems: MenuItem[] = [
     {
-      title: 'Settings',
-      icon: 'settings',
+      title: 'Manage Vehicles',
+      icon: 'directions-car',
       onPress: () => {
-        // TODO: Navigate to settings page when available
-        Alert.alert('Settings', 'Settings page coming soon');
+        router.push('/vehicles');
       },
       showChevron: true,
     },
     {
-      title: 'Vehicles',
-      icon: 'directions-car',
+      title: 'Expense Settings',
+      icon: 'settings',
       onPress: () => {
-        // TODO: Navigate to vehicles page when available
-        Alert.alert('Vehicles', 'Vehicles management coming soon');
+        router.push('/expense-settings');
       },
       showChevron: true,
     },

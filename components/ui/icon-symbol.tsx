@@ -21,6 +21,7 @@ const MAPPING = {
   'dollarsign.circle.fill': 'attach-money',
   'receipt.fill': 'receipt',
   'ellipsis.circle.fill': 'more-horiz',
+  'car.fill': 'directions-car',
 } as IconMapping;
 
 /**

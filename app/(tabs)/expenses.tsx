@@ -3,6 +3,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/hooks/useAuth';
 import { apiGet, apiRequest, uploadReceiptImage } from '@/lib/api';
 import { formatCurrency, formatDate, getCategoryLabel, getTodayLocalDateString, getYearFromDateString } from '@/lib/format';
+import { type Expense, type Vehicle } from '@/lib/types';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useMemo, useState } from 'react';
@@ -66,28 +67,6 @@ const HOME_OFFICE_SUBCATEGORIES = [
   { id: 'rent', label: 'Rent' },
 ] as const;
 
-interface Expense {
-  id: string;
-  amount: number | string;
-  baseCost?: number | string;
-  gstAmount?: number | string;
-  pstAmount?: number | string;
-  date: string;
-  title?: string;
-  category: string;
-  subcategory?: string;
-  vehicleId?: string;
-  vendor?: string;
-  description?: string;
-  isTaxDeductible?: boolean;
-  [key: string]: any;
-}
-
-interface Vehicle {
-  id: string;
-  name: string;
-  [key: string]: any;
-}
 
 interface ExpenseFormData {
   baseCost: string;

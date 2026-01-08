@@ -66,6 +66,33 @@ export function getIncomeTypeLabel(type: string): string {
   return labels[type] || type;
 }
 
+export function getPersonalExpenseCategoryLabel(category: string): string {
+  const labels: Record<string, string> = {
+    child_care_expenses: 'Child Care Expenses',
+    medical_expenses: 'Medical Expenses',
+    charitable_donations: 'Charitable Donations',
+    moving_expenses: 'Moving Expenses',
+    student_loan_interest: 'Student Loan Interest',
+    disability_supports: 'Disability Supports',
+    investment_counsel_fees: 'Investment Counsel Fees',
+    tuition: 'Tuition',
+    personal_phone: 'Personal Phone',
+    grocery: 'Groceries',
+    entertainment: 'Entertainment',
+    dining_out: 'Dining Out',
+    clothing: 'Clothing',
+    transportation: 'Transportation',
+    insurance_personal: 'Personal Insurance',
+    health_fitness: 'Health & Fitness',
+    gifts: 'Gifts',
+    household_supplies: 'Household Supplies',
+  };
+  return labels[category] || category
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
 export function getTodayLocalDateString(): string {
   const now = new Date();
   const year = now.getFullYear();

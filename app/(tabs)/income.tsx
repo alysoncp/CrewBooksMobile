@@ -3,6 +3,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/hooks/useAuth';
 import { apiGet, apiRequest, uploadReceiptImage } from '@/lib/api';
 import { formatCurrency, formatDate, getIncomeTypeLabel, getTodayLocalDateString, getYearFromDateString } from '@/lib/format';
+import { type Income } from '@/lib/types';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useMemo, useState } from 'react';
@@ -27,23 +28,6 @@ const ACCOUNTING_OFFICES = [
   { value: 'cast_and_crew_services', label: 'Cast and Crew Services' },
   { value: 'other', label: 'Other' },
 ] as const;
-
-interface Income {
-  id: string;
-  amount: number | string;
-  date: string;
-  incomeType: string;
-  productionName?: string;
-  accountingOffice?: string;
-  gstHstCollected?: number | string;
-  dues?: number | string;
-  retirement?: number | string;
-  labour?: number | string;
-  buyout?: number | string;
-  pension?: number | string;
-  insurance?: number | string;
-  [key: string]: any;
-}
 
 interface IncomeFormData {
   amount: string;

@@ -23,12 +23,15 @@ export default function RootLayout() {
     if (isLoading) return;
 
     const inAuthGroup = segments[0] === '(tabs)';
+    const isPublicPage = segments[0] === 'login';
+    const currentRoute = segments[0] as string;
+    const isSettingsPage = currentRoute === 'vehicles' || currentRoute === 'expense-settings' || currentRoute === 'modal';
 
-    if (!isAuthenticated && inAuthGroup) {
-      // Redirect to login if not authenticated
+    if (!isAuthenticated && (inAuthGroup || isSettingsPage)) {
+      // Redirect to login if not authenticated and trying to access protected pages
       router.replace('/login');
-    } else if (isAuthenticated && !inAuthGroup) {
-      // Redirect to tabs if authenticated
+    } else if (isAuthenticated && isPublicPage) {
+      // Redirect to tabs if authenticated and on login page
       router.replace('/(tabs)');
     }
   }, [isAuthenticated, isLoading, segments]);
@@ -41,6 +44,8 @@ export default function RootLayout() {
             <Stack.Screen name="login" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+            <Stack.Screen name="vehicles" options={{ headerShown: false, presentation: 'card' }} />
+            <Stack.Screen name="expense-settings" options={{ headerShown: false, presentation: 'card' }} />
           </Stack>
           <StatusBar style="auto" />
         </ThemeProvider>

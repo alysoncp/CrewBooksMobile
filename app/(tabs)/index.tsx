@@ -5,7 +5,7 @@ import { formatCurrency, formatPercent, getCategoryLabel, getYearFromDateString 
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { PieChart } from 'react-native-chart-kit';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -97,9 +97,14 @@ export default function Dashboard() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
-  const { taxYear } = useTaxYear();
+  const { taxYear, setTaxYear } = useTaxYear();
   const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showYearPicker, setShowYearPicker] = useState(false);
+  const currentYear = new Date().getFullYear();
+  
+  // Generate array of years (current year and 5 years back)
+  const availableYears = Array.from({ length: 6 }, (_, i) => currentYear - i);
 
   useFocusEffect(
     useCallback(() => {
@@ -187,16 +192,75 @@ export default function Dashboard() {
   }, [filteredExpenses, isDark]);
 
   return (
-    <ScrollView 
-      style={[styles.container, isDark && styles.containerDark]} 
+    <ScrollView
+      style={[styles.container, isDark && styles.containerDark]}
       contentContainerStyle={[styles.contentContainer, { paddingTop: insets.top + 8 }]}
     >
       <View style={styles.header}>
-        <Text style={[styles.title, isDark && styles.titleDark]}>Dashboard</Text>
-        <Text style={[styles.headerSubtitle, isDark && styles.headerSubtitleDark]}>
-          Your financial overview for {taxYear}
-        </Text>
+        <View style={styles.headerTop}>
+          <View style={styles.headerLeft}>
+            <Text style={[styles.title, isDark && styles.titleDark]}>Dashboard</Text>
+            <Text style={[styles.headerSubtitle, isDark && styles.headerSubtitleDark]}>
+              Your financial overview for {taxYear}
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.taxYearPicker, isDark && styles.taxYearPickerDark]}
+            onPress={() => setShowYearPicker(true)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.taxYearValue, isDark && styles.taxYearValueDark]}>
+              {taxYear}
+            </Text>
+            <MaterialIcons name="arrow-drop-down" size={24} color={isDark ? '#9BA1A6' : '#666'} />
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {/* Tax Year Picker Modal */}
+      <Modal
+        visible={showYearPicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowYearPicker(false)}
+      >
+        <TouchableOpacity
+          style={styles.pickerOverlay}
+          activeOpacity={1}
+          onPress={() => setShowYearPicker(false)}
+        >
+          <View style={[styles.pickerModal, isDark && styles.pickerModalDark]}>
+            <ScrollView>
+              {availableYears.map((year) => (
+                <TouchableOpacity
+                  key={year}
+                  style={[
+                    styles.pickerOption,
+                    year === taxYear && styles.pickerOptionSelected,
+                  ]}
+                  onPress={() => {
+                    setTaxYear(year);
+                    setShowYearPicker(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.pickerOptionText,
+                      isDark && styles.pickerOptionTextDark,
+                      year === taxYear && styles.pickerOptionTextSelected,
+                    ]}
+                  >
+                    {year}
+                  </Text>
+                  {year === taxYear && (
+                    <MaterialIcons name="check" size={24} color={isDark ? '#0a7ea4' : '#0a7ea4'} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       <View style={styles.statsGrid}>
         <StatCard
@@ -264,6 +328,7 @@ export default function Dashboard() {
                 backgroundColor="transparent"
                 paddingLeft="15"
                 absolute
+                hasLegend={false}
               />
             </View>
             <View style={styles.categoryList}>
@@ -340,6 +405,15 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: 24,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  headerLeft: {
+    flex: 1,
   },
   title: {
     fontSize: 24,
@@ -481,8 +555,10 @@ const styles = StyleSheet.create({
   },
   chartContainer: {
     alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 24,
     marginVertical: 16,
+    width: '100%',
   },
   categoryList: {
     gap: 12,
@@ -564,5 +640,65 @@ const styles = StyleSheet.create({
   taxValueTotal: {
     fontSize: 20,
     color: '#ef4444',
+  },
+  taxYearPicker: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    padding: 16,
+    backgroundColor: '#f9fafb',
+    minWidth: 100,
+  },
+  taxYearPickerDark: {
+    backgroundColor: '#374151',
+    borderColor: '#4b5563',
+  },
+  taxYearValue: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#11181C',
+  },
+  taxYearValueDark: {
+    color: '#ECEDEE',
+  },
+  pickerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pickerModal: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    width: '80%',
+    maxHeight: '60%',
+  },
+  pickerModalDark: {
+    backgroundColor: '#1f2937',
+  },
+  pickerOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  pickerOptionSelected: {
+    backgroundColor: '#f0f9ff',
+  },
+  pickerOptionText: {
+    fontSize: 16,
+    color: '#11181C',
+  },
+  pickerOptionTextDark: {
+    color: '#ECEDEE',
+  },
+  pickerOptionTextSelected: {
+    fontWeight: '600',
+    color: '#0a7ea4',
   },
 });
