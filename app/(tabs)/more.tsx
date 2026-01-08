@@ -13,6 +13,11 @@ interface MenuItem {
   showChevron?: boolean;
 }
 
+interface MenuSection {
+  title?: string;
+  items: MenuItem[];
+}
+
 export default function More() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -48,63 +53,76 @@ export default function More() {
     );
   };
 
-  const menuItems: MenuItem[] = [
+  const menuSections: MenuSection[] = [
     {
-      title: 'Manage Vehicles',
-      icon: 'directions-car',
-      onPress: () => {
-        router.push('/vehicles');
-      },
-      showChevron: true,
+      title: 'Tools',
+      items: [
+        {
+          title: 'Tax Estimator',
+          icon: 'calculate',
+          onPress: () => {
+            router.push('/tax-calculator');
+          },
+          showChevron: true,
+        },
+        {
+          title: 'GST/HST Tracking',
+          icon: 'receipt',
+          onPress: () => {
+            router.push('/gst-hst');
+          },
+          showChevron: true,
+        },
+      ],
     },
     {
-      title: 'Expense Settings',
-      icon: 'settings',
-      onPress: () => {
-        router.push('/expense-settings');
-      },
-      showChevron: true,
+      items: [
+        {
+          title: 'Profile',
+          icon: 'person',
+          onPress: () => {
+            router.push('/profile');
+          },
+          showChevron: true,
+        },
+        {
+          title: 'Manage Vehicles',
+          icon: 'directions-car',
+          onPress: () => {
+            router.push('/vehicles');
+          },
+          showChevron: true,
+        },
+        {
+          title: 'Expense Settings',
+          icon: 'settings',
+          onPress: () => {
+            router.push('/expense-settings');
+          },
+          showChevron: true,
+        },
+      ],
     },
     {
-      title: 'Profile',
-      icon: 'person',
-      onPress: () => {
-        router.push('/profile');
-      },
-      showChevron: true,
-    },
-    {
-      title: 'Tax Estimator',
-      icon: 'calculate',
-      onPress: () => {
-        router.push('/tax-calculator');
-      },
-      showChevron: true,
-    },
-    {
-      title: 'GST/HST Tracking',
-      icon: 'receipt',
-      onPress: () => {
-        router.push('/gst-hst');
-      },
-      showChevron: true,
-    },
-    {
-      title: 'Help & Support',
-      icon: 'help-outline',
-      onPress: () => {
-        // TODO: Navigate to help page when available
-        Alert.alert('Help & Support', 'Help page coming soon');
-      },
-      showChevron: true,
-    },
-    {
-      title: 'About',
-      icon: 'info-outline',
-      onPress: () => {
-        router.push('/about');
-      },
-      showChevron: true,
+      items: [
+        {
+          title: 'Help & Support',
+          icon: 'help-outline',
+          onPress: () => {
+            // TODO: Navigate to help page when available
+            Alert.alert('Help & Support', 'Help page coming soon');
+          },
+          showChevron: true,
+        },
+        {
+          title: 'About',
+          icon: 'info-outline',
+          onPress: () => {
+            router.push('/about');
+          },
+          showChevron: true,
+        },
+      ],
     },
   ];
 
@@ -139,33 +157,53 @@ export default function More() {
         </TouchableOpacity>
       </View>
 
-      <View style={[styles.menuSection, isDark && styles.menuSectionDark]}>
-        {menuItems.map((item, index) => (
-          <TouchableOpacity
-            key={item.title}
-            style={[
-              styles.menuItem,
-              index !== menuItems.length - 1 && styles.menuItemBorder,
-              isDark && styles.menuItemDark,
-              index !== menuItems.length - 1 && isDark && styles.menuItemBorderDark,
-            ]}
-            onPress={item.onPress}
-            activeOpacity={0.7}
-          >
-            <View style={styles.menuItemLeft}>
-              <View style={[styles.menuItemIcon, isDark && styles.menuItemIconDark]}>
-                <MaterialIcons name={item.icon} size={24} color={isDark ? '#ECEDEE' : '#11181C'} />
-              </View>
-              <Text style={[styles.menuItemText, isDark && styles.menuItemTextDark]}>
-                {item.title}
+      {menuSections.map((section, sectionIndex) => (
+        <View
+          key={sectionIndex}
+          style={[
+            styles.menuSection,
+            isDark && styles.menuSectionDark,
+            sectionIndex !== menuSections.length - 1 && styles.menuSectionMargin,
+          ]}
+        >
+          {section.title && (
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionHeaderText, isDark && styles.sectionHeaderTextDark]}>
+                {section.title}
               </Text>
             </View>
-            {item.showChevron && (
-              <MaterialIcons name="chevron-right" size={24} color={isDark ? '#9BA1A6' : '#666'} />
-            )}
-          </TouchableOpacity>
-        ))}
-      </View>
+          )}
+          {section.items.map((item, itemIndex) => (
+            <TouchableOpacity
+              key={item.title}
+              style={[
+                styles.menuItem,
+                itemIndex !== section.items.length - 1 && styles.menuItemBorder,
+                isDark && styles.menuItemDark,
+                itemIndex !== section.items.length - 1 && isDark && styles.menuItemBorderDark,
+              ]}
+              onPress={item.onPress}
+              activeOpacity={0.7}
+            >
+              <View style={styles.menuItemLeft}>
+                <View style={[styles.menuItemIcon, isDark && styles.menuItemIconDark]}>
+                  <MaterialIcons
+                    name={item.icon}
+                    size={24}
+                    color={isDark ? '#ECEDEE' : '#11181C'}
+                  />
+                </View>
+                <Text style={[styles.menuItemText, isDark && styles.menuItemTextDark]}>
+                  {item.title}
+                </Text>
+              </View>
+              {item.showChevron && (
+                <MaterialIcons name="chevron-right" size={24} color={isDark ? '#9BA1A6' : '#666'} />
+              )}
+            </TouchableOpacity>
+          ))}
+        </View>
+      ))}
 
       <TouchableOpacity
         style={[styles.logoutButton, isDark && styles.logoutButtonDark]}
@@ -324,10 +362,29 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
     marginBottom: 24,
+    overflow: 'hidden',
   },
   menuSectionDark: {
     backgroundColor: '#1f2937',
     borderColor: '#374151',
+  },
+  menuSectionMargin: {
+    marginBottom: 16,
+  },
+  sectionHeader: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  sectionHeaderText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#666',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  sectionHeaderTextDark: {
+    color: '#9BA1A6',
   },
   menuItem: {
     flexDirection: 'row',
