@@ -66,6 +66,30 @@ export default function More() {
       showChevron: true,
     },
     {
+      title: 'Profile',
+      icon: 'person',
+      onPress: () => {
+        router.push('/profile');
+      },
+      showChevron: true,
+    },
+    {
+      title: 'Tax Estimator',
+      icon: 'calculate',
+      onPress: () => {
+        router.push('/tax-calculator');
+      },
+      showChevron: true,
+    },
+    {
+      title: 'GST/HST Tracking',
+      icon: 'receipt',
+      onPress: () => {
+        router.push('/gst-hst');
+      },
+      showChevron: true,
+    },
+    {
       title: 'Help & Support',
       icon: 'help-outline',
       onPress: () => {

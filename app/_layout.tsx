@@ -25,7 +25,7 @@ export default function RootLayout() {
     const inAuthGroup = segments[0] === '(tabs)';
     const isPublicPage = segments[0] === 'login';
     const currentRoute = segments[0] as string;
-    const isSettingsPage = currentRoute === 'vehicles' || currentRoute === 'expense-settings' || currentRoute === 'about' || currentRoute === 'modal';
+    const isSettingsPage = currentRoute === 'vehicles' || currentRoute === 'expense-settings' || currentRoute === 'about' || currentRoute === 'tax-calculator' || currentRoute === 'gst-hst' || currentRoute === 'profile' || currentRoute === 'modal';
 
     if (!isAuthenticated && (inAuthGroup || isSettingsPage)) {
       // Redirect to login if not authenticated and trying to access protected pages
@@ -47,6 +47,9 @@ export default function RootLayout() {
             <Stack.Screen name="vehicles" options={{ headerShown: false, presentation: 'card' }} />
             <Stack.Screen name="expense-settings" options={{ headerShown: false, presentation: 'card' }} />
             <Stack.Screen name="about" options={{ headerShown: false, presentation: 'card' }} />
+            <Stack.Screen name="tax-calculator" options={{ headerShown: false, presentation: 'card' }} />
+            <Stack.Screen name="gst-hst" options={{ headerShown: false, presentation: 'card' }} />
+            <Stack.Screen name="profile" options={{ headerShown: false, presentation: 'card' }} />
           </Stack>
           <StatusBar style="auto" />
         </ThemeProvider>
