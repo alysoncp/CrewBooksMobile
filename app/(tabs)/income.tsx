@@ -7,7 +7,7 @@ import { type Income } from '@/lib/types';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -21,6 +21,12 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+// Module-level cache to persist across component remounts
+let paystubsCache: any[] | null = null;
+let paystubsCacheTimestamp: number = 0;
+let paystubsFetching: boolean = false;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 const INCOME_TYPES = ['union_production', 'non_union_production', 'royalty_residual', 'cash'] as const;
 
@@ -55,6 +61,7 @@ export default function Income() {
   const hasGstNumber = user?.hasGstNumber === true;
 
   const [incomeList, setIncomeList] = useState<Income[]>([]);
+  const [paystubs, setPaystubs] = useState<any[]>(paystubsCache || []);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingIncome, setEditingIncome] = useState<Income | null>(null);
@@ -65,6 +72,16 @@ export default function Income() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isProcessingReceipt, setIsProcessingReceipt] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedIncomeType, setSelectedIncomeType] = useState<string | null>(null);
+  const [selectedAccountingOffice, setSelectedAccountingOffice] = useState<string | null>(null);
+  const [selectedProduction, setSelectedProduction] = useState<string>('');
+  const [minAmount, setMinAmount] = useState<string>('');
+  const [maxAmount, setMaxAmount] = useState<string>('');
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
+  const [showFilterIncomeTypePicker, setShowFilterIncomeTypePicker] = useState(false);
+  const [showFilterAccountingOfficePicker, setShowFilterAccountingOfficePicker] = useState(false);
 
   const [formData, setFormData] = useState<IncomeFormData>({
     amount: '',
@@ -81,8 +98,61 @@ export default function Income() {
     insurance: '',
   });
 
+  const fetchPaystubs = useCallback(async () => {
+    // Prevent concurrent fetches
+    if (paystubsFetching) {
+      if (__DEV__) {
+        console.log('Paystub fetch already in progress, skipping');
+      }
+      return;
+    }
+    
+    // Use cache if it's still valid (less than 5 minutes old)
+    const now = Date.now();
+    if (paystubsCache && paystubsCacheTimestamp > 0 && (now - paystubsCacheTimestamp) < CACHE_DURATION) {
+      if (__DEV__) {
+        console.log('Using cached paystubs');
+      }
+      setPaystubs(paystubsCache);
+      return;
+    }
+    
+    paystubsFetching = true;
+    if (__DEV__) {
+      console.log('Fetching paystubs...');
+    }
+    
+    try {
+      const data = await apiGet<any[]>('/api/paystubs');
+      paystubsCache = data || [];
+      paystubsCacheTimestamp = now;
+      
+      if (__DEV__) {
+        console.log('Fetched paystubs:', data);
+        if (data && data.length > 0) {
+          console.log('Sample paystub:', data[0]);
+        }
+      }
+      setPaystubs(paystubsCache);
+    } catch (error) {
+      console.error('Error fetching paystubs:', error);
+      setPaystubs([]);
+    } finally {
+      paystubsFetching = false;
+    }
+  }, []);
+
   useEffect(() => {
     fetchIncome();
+  }, []);
+
+  // Fetch paystubs only once when component mounts
+  useEffect(() => {
+    // Only fetch if we don't have cached data
+    if (!paystubsCache || paystubsCache.length === 0) {
+      fetchPaystubs();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchIncome = async () => {
@@ -102,14 +172,58 @@ export default function Income() {
       const itemYear = getYearFromDateString(item.date);
       if (itemYear !== taxYear) return false;
 
-      const searchLower = searchQuery.toLowerCase();
-      return (
-        item.productionName?.toLowerCase().includes(searchLower) ||
-        item.accountingOffice?.toLowerCase().includes(searchLower) ||
-        getIncomeTypeLabel(item.incomeType).toLowerCase().includes(searchLower)
-      );
+      // Search filter
+      if (searchQuery) {
+        const searchLower = searchQuery.toLowerCase();
+        const matchesSearch =
+          item.productionName?.toLowerCase().includes(searchLower) ||
+          item.accountingOffice?.toLowerCase().includes(searchLower) ||
+          getIncomeTypeLabel(item.incomeType).toLowerCase().includes(searchLower);
+        if (!matchesSearch) return false;
+      }
+
+      // Income type filter
+      if (selectedIncomeType && item.incomeType !== selectedIncomeType) {
+        return false;
+      }
+
+      // Accounting office filter
+      if (selectedAccountingOffice) {
+        if (selectedAccountingOffice === 'other') {
+          // Check if it's not one of the predefined offices
+          const isOther = !ACCOUNTING_OFFICES.some((o) => o.value === item.accountingOffice);
+          if (!isOther) return false;
+        } else if (item.accountingOffice !== selectedAccountingOffice) {
+          return false;
+        }
+      }
+
+      // Production name filter
+      if (selectedProduction) {
+        const productionLower = selectedProduction.toLowerCase();
+        if (!item.productionName?.toLowerCase().includes(productionLower)) {
+          return false;
+        }
+      }
+
+      // Amount filters
+      const itemAmount = parseFloat(item.amount.toString());
+      if (minAmount) {
+        const min = parseFloat(minAmount);
+        if (isNaN(min) || itemAmount < min) return false;
+      }
+      if (maxAmount) {
+        const max = parseFloat(maxAmount);
+        if (isNaN(max) || itemAmount > max) return false;
+      }
+
+      // Date range filters
+      if (dateFrom && item.date < dateFrom) return false;
+      if (dateTo && item.date > dateTo) return false;
+
+      return true;
     });
-  }, [incomeList, taxYear, searchQuery]);
+  }, [incomeList, taxYear, searchQuery, selectedIncomeType, selectedAccountingOffice, selectedProduction, minAmount, maxAmount, dateFrom, dateTo]);
 
   const totalIncome = filteredIncome.reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0);
   
@@ -402,7 +516,11 @@ export default function Income() {
     );
   };
 
-  const renderIncomeItem = ({ item }: { item: Income }) => (
+  const renderIncomeItem = useCallback(({ item }: { item: Income }) => {
+    // Check if there's a linked paystub
+    const hasLinkedPaystub = paystubs.some((paystub) => paystub.linkedIncomeId === item.id);
+    
+    return (
     <View style={[styles.incomeCard, isDark && styles.incomeCardDark]}>
       <View style={styles.incomeCardHeader}>
         <View style={styles.incomeCardHeaderLeft}>
@@ -433,14 +551,20 @@ export default function Income() {
       
       <View style={[styles.incomeCardFooter, isDark && styles.incomeCardFooterDark]}>
         <View style={styles.incomeCardActions}>
-          {item.paystubId && (
-            <TouchableOpacity
-              onPress={() => router.push('/paystub-gallery')}
-              style={styles.incomeActionButton}
-            >
-              <MaterialIcons name="receipt" size={20} color={isDark ? '#9BA1A6' : '#666'} />
-            </TouchableOpacity>
-          )}
+          {hasLinkedPaystub && (() => {
+            const linkedPaystub = paystubs.find((p) => p.linkedIncomeId === item.id);
+            return (
+              <TouchableOpacity
+                onPress={() => router.push({
+                  pathname: '/paystub-gallery',
+                  params: { paystubId: linkedPaystub?.id }
+                })}
+                style={styles.incomeActionButton}
+              >
+                <MaterialIcons name="receipt" size={20} color={isDark ? '#9BA1A6' : '#666'} />
+              </TouchableOpacity>
+            );
+          })()}
           <TouchableOpacity
             onPress={() => handleEdit(item)}
             style={styles.incomeActionButton}
@@ -461,16 +585,14 @@ export default function Income() {
         </View>
       </View>
     </View>
-  );
+    );
+  }, [paystubs, isDark, router, handleEdit, handleDelete, deleteId]);
 
   return (
     <ScrollView style={[styles.container, isDark && styles.containerDark]} contentContainerStyle={[styles.contentContainer, { paddingTop: insets.top + 8 }]}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Text style={[styles.title, isDark && styles.titleDark]}>Income</Text>
-          <Text style={[styles.subtitle, isDark && styles.subtitleDark]}>
-            Track your earnings from productions and gigs
-          </Text>
         </View>
         <TouchableOpacity
           style={styles.fabButton}
@@ -533,17 +655,207 @@ export default function Income() {
               All recorded income for {taxYear}
             </Text>
           </View>
-          <View style={[styles.searchContainer, isDark && styles.searchContainerDark]}>
-            <MaterialIcons name="search" size={18} color={isDark ? '#9BA1A6' : '#666'} style={styles.searchIcon} />
-            <TextInput
-              style={[styles.searchInput, isDark && styles.searchInputDark]}
-              placeholder="Search income..."
-              placeholderTextColor={isDark ? '#9BA1A6' : '#666'}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
+          <View style={styles.headerControls}>
+            <TouchableOpacity
+              style={[styles.filterButton, isDark && styles.filterButtonDark, (selectedIncomeType || selectedAccountingOffice || selectedProduction || minAmount || maxAmount || dateFrom || dateTo) && styles.filterButtonActive]}
+              onPress={() => setShowFilters(!showFilters)}
+            >
+              <MaterialIcons name="filter-list" size={20} color={(selectedIncomeType || selectedAccountingOffice || selectedProduction || minAmount || maxAmount || dateFrom || dateTo) ? '#fff' : (isDark ? '#9BA1A6' : '#666')} />
+            </TouchableOpacity>
+            <View style={[styles.searchContainer, isDark && styles.searchContainerDark]}>
+              <MaterialIcons name="search" size={18} color={isDark ? '#9BA1A6' : '#666'} style={styles.searchIcon} />
+              <TextInput
+                style={[styles.searchInput, isDark && styles.searchInputDark]}
+                placeholder="Search income..."
+                placeholderTextColor={isDark ? '#9BA1A6' : '#666'}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+            </View>
           </View>
         </View>
+
+        {/* Active Filter Chips */}
+        {(selectedIncomeType || selectedAccountingOffice || selectedProduction || minAmount || maxAmount || dateFrom || dateTo) && (
+          <View style={styles.filterChipsContainer}>
+            {selectedIncomeType && (
+              <View style={[styles.filterChip, isDark && styles.filterChipDark]}>
+                <Text style={[styles.filterChipText, isDark && styles.filterChipTextDark]}>
+                  {getIncomeTypeLabel(selectedIncomeType)}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setSelectedIncomeType(null)}
+                  style={styles.filterChipClose}
+                >
+                  <MaterialIcons name="close" size={16} color={isDark ? '#9BA1A6' : '#666'} />
+                </TouchableOpacity>
+              </View>
+            )}
+            {selectedAccountingOffice && (
+              <View style={[styles.filterChip, isDark && styles.filterChipDark]}>
+                <Text style={[styles.filterChipText, isDark && styles.filterChipTextDark]}>
+                  {selectedAccountingOffice === 'other' ? 'Other Office' : ACCOUNTING_OFFICES.find((o) => o.value === selectedAccountingOffice)?.label || selectedAccountingOffice}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setSelectedAccountingOffice(null)}
+                  style={styles.filterChipClose}
+                >
+                  <MaterialIcons name="close" size={16} color={isDark ? '#9BA1A6' : '#666'} />
+                </TouchableOpacity>
+              </View>
+            )}
+            {selectedProduction && (
+              <View style={[styles.filterChip, isDark && styles.filterChipDark]}>
+                <Text style={[styles.filterChipText, isDark && styles.filterChipTextDark]}>
+                  Production: {selectedProduction}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setSelectedProduction('')}
+                  style={styles.filterChipClose}
+                >
+                  <MaterialIcons name="close" size={16} color={isDark ? '#9BA1A6' : '#666'} />
+                </TouchableOpacity>
+              </View>
+            )}
+            {(minAmount || maxAmount) && (
+              <View style={[styles.filterChip, isDark && styles.filterChipDark]}>
+                <Text style={[styles.filterChipText, isDark && styles.filterChipTextDark]}>
+                  {minAmount && maxAmount ? `$${minAmount} - $${maxAmount}` : minAmount ? `≥ $${minAmount}` : `≤ $${maxAmount}`}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    setMinAmount('');
+                    setMaxAmount('');
+                  }}
+                  style={styles.filterChipClose}
+                >
+                  <MaterialIcons name="close" size={16} color={isDark ? '#9BA1A6' : '#666'} />
+                </TouchableOpacity>
+              </View>
+            )}
+            {(dateFrom || dateTo) && (
+              <View style={[styles.filterChip, isDark && styles.filterChipDark]}>
+                <Text style={[styles.filterChipText, isDark && styles.filterChipTextDark]}>
+                  {dateFrom && dateTo ? `${dateFrom} to ${dateTo}` : dateFrom ? `From ${dateFrom}` : `To ${dateTo}`}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    setDateFrom('');
+                    setDateTo('');
+                  }}
+                  style={styles.filterChipClose}
+                >
+                  <MaterialIcons name="close" size={16} color={isDark ? '#9BA1A6' : '#666'} />
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Filter Panel */}
+        {showFilters && (
+          <View style={[styles.filterPanel, isDark && styles.filterPanelDark]}>
+            <View style={styles.filterPanelHeader}>
+              <Text style={[styles.filterPanelTitle, isDark && styles.filterPanelTitleDark]}>Filters</Text>
+              <TouchableOpacity onPress={() => {
+                setSelectedIncomeType(null);
+                setSelectedAccountingOffice(null);
+                setSelectedProduction('');
+                setMinAmount('');
+                setMaxAmount('');
+                setDateFrom('');
+                setDateTo('');
+              }}>
+                <Text style={[styles.filterClearAll, isDark && styles.filterClearAllDark]}>Clear All</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.filterGroup}>
+              <Text style={[styles.filterLabel, isDark && styles.filterLabelDark]}>Income Type</Text>
+              <TouchableOpacity
+                style={[styles.filterSelectButton, isDark && styles.filterSelectButtonDark]}
+                onPress={() => setShowFilterIncomeTypePicker(true)}
+              >
+                <Text style={[styles.filterSelectText, isDark && styles.filterSelectTextDark]}>
+                  {selectedIncomeType ? getIncomeTypeLabel(selectedIncomeType) : 'All Types'}
+                </Text>
+                <MaterialIcons name="arrow-drop-down" size={20} color={isDark ? '#9BA1A6' : '#666'} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.filterGroup}>
+              <Text style={[styles.filterLabel, isDark && styles.filterLabelDark]}>Accounting Office</Text>
+              <TouchableOpacity
+                style={[styles.filterSelectButton, isDark && styles.filterSelectButtonDark]}
+                onPress={() => setShowFilterAccountingOfficePicker(true)}
+              >
+                <Text style={[styles.filterSelectText, isDark && styles.filterSelectTextDark]}>
+                  {selectedAccountingOffice === 'other' ? 'Other' : selectedAccountingOffice ? ACCOUNTING_OFFICES.find((o) => o.value === selectedAccountingOffice)?.label || selectedAccountingOffice : 'All Offices'}
+                </Text>
+                <MaterialIcons name="arrow-drop-down" size={20} color={isDark ? '#9BA1A6' : '#666'} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.filterGroup}>
+              <Text style={[styles.filterLabel, isDark && styles.filterLabelDark]}>Production Name</Text>
+              <TextInput
+                style={[styles.filterInput, isDark && styles.filterInputDark]}
+                placeholder="Filter by production name..."
+                placeholderTextColor={isDark ? '#9BA1A6' : '#666'}
+                value={selectedProduction}
+                onChangeText={setSelectedProduction}
+              />
+            </View>
+
+            <View style={styles.filterGroup}>
+              <Text style={[styles.filterLabel, isDark && styles.filterLabelDark]}>Amount Range</Text>
+              <View style={styles.filterRow}>
+                <View style={[styles.currencyInput, styles.filterInputHalf, isDark && styles.currencyInputDark]}>
+                  <Text style={[styles.currencySymbol, isDark && styles.currencySymbolDark]}>$</Text>
+                  <TextInput
+                    style={[styles.filterInputText, isDark && styles.filterInputTextDark]}
+                    placeholder="Min"
+                    placeholderTextColor={isDark ? '#9BA1A6' : '#666'}
+                    value={minAmount}
+                    onChangeText={setMinAmount}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+                <View style={[styles.currencyInput, styles.filterInputHalf, isDark && styles.currencyInputDark]}>
+                  <Text style={[styles.currencySymbol, isDark && styles.currencySymbolDark]}>$</Text>
+                  <TextInput
+                    style={[styles.filterInputText, isDark && styles.filterInputTextDark]}
+                    placeholder="Max"
+                    placeholderTextColor={isDark ? '#9BA1A6' : '#666'}
+                    value={maxAmount}
+                    onChangeText={setMaxAmount}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.filterGroup}>
+              <Text style={[styles.filterLabel, isDark && styles.filterLabelDark]}>Date Range</Text>
+              <View style={styles.filterRow}>
+                <TextInput
+                  style={[styles.filterInput, styles.filterInputHalf, isDark && styles.filterInputDark]}
+                  placeholder="From (YYYY-MM-DD)"
+                  placeholderTextColor={isDark ? '#9BA1A6' : '#666'}
+                  value={dateFrom}
+                  onChangeText={setDateFrom}
+                />
+                <TextInput
+                  style={[styles.filterInput, styles.filterInputHalf, isDark && styles.filterInputDark]}
+                  placeholder="To (YYYY-MM-DD)"
+                  placeholderTextColor={isDark ? '#9BA1A6' : '#666'}
+                  value={dateTo}
+                  onChangeText={setDateTo}
+                />
+              </View>
+            </View>
+          </View>
+        )}
         {isLoading ? (
           <ActivityIndicator size="large" color={isDark ? '#9BA1A6' : '#666'} style={styles.loader} />
         ) : filteredIncome.length === 0 ? (
@@ -852,6 +1164,105 @@ export default function Income() {
             </View>
           </TouchableOpacity>
         </Modal>
+
+        {/* Filter Income Type Picker Modal */}
+        <Modal
+          visible={showFilterIncomeTypePicker}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowFilterIncomeTypePicker(false)}
+        >
+          <TouchableOpacity
+            style={styles.pickerOverlay}
+            activeOpacity={1}
+            onPress={() => setShowFilterIncomeTypePicker(false)}
+          >
+            <View style={[styles.pickerModal, isDark && styles.pickerModalDark]}>
+              <ScrollView>
+                <TouchableOpacity
+                  style={styles.pickerOption}
+                  onPress={() => {
+                    setSelectedIncomeType(null);
+                    setShowFilterIncomeTypePicker(false);
+                  }}
+                >
+                  <Text style={[styles.pickerOptionText, isDark && styles.pickerOptionTextDark, !selectedIncomeType && styles.pickerOptionTextSelected]}>
+                    All Types
+                  </Text>
+                </TouchableOpacity>
+                {INCOME_TYPES.map((type) => (
+                  <TouchableOpacity
+                    key={type}
+                    style={styles.pickerOption}
+                    onPress={() => {
+                      setSelectedIncomeType(type);
+                      setShowFilterIncomeTypePicker(false);
+                    }}
+                  >
+                    <Text style={[styles.pickerOptionText, isDark && styles.pickerOptionTextDark, selectedIncomeType === type && styles.pickerOptionTextSelected]}>
+                      {getIncomeTypeLabel(type)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+
+        {/* Filter Accounting Office Picker Modal */}
+        <Modal
+          visible={showFilterAccountingOfficePicker}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowFilterAccountingOfficePicker(false)}
+        >
+          <TouchableOpacity
+            style={styles.pickerOverlay}
+            activeOpacity={1}
+            onPress={() => setShowFilterAccountingOfficePicker(false)}
+          >
+            <View style={[styles.pickerModal, isDark && styles.pickerModalDark]}>
+              <ScrollView>
+                <TouchableOpacity
+                  style={styles.pickerOption}
+                  onPress={() => {
+                    setSelectedAccountingOffice(null);
+                    setShowFilterAccountingOfficePicker(false);
+                  }}
+                >
+                  <Text style={[styles.pickerOptionText, isDark && styles.pickerOptionTextDark, !selectedAccountingOffice && styles.pickerOptionTextSelected]}>
+                    All Offices
+                  </Text>
+                </TouchableOpacity>
+                {ACCOUNTING_OFFICES.map((office) => (
+                  <TouchableOpacity
+                    key={office.value}
+                    style={styles.pickerOption}
+                    onPress={() => {
+                      setSelectedAccountingOffice(office.value);
+                      setShowFilterAccountingOfficePicker(false);
+                    }}
+                  >
+                    <Text style={[styles.pickerOptionText, isDark && styles.pickerOptionTextDark, selectedAccountingOffice === office.value && styles.pickerOptionTextSelected]}>
+                      {office.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+                <TouchableOpacity
+                  style={styles.pickerOption}
+                  onPress={() => {
+                    setSelectedAccountingOffice('other');
+                    setShowFilterAccountingOfficePicker(false);
+                  }}
+                >
+                  <Text style={[styles.pickerOptionText, isDark && styles.pickerOptionTextDark, selectedAccountingOffice === 'other' && styles.pickerOptionTextSelected]}>
+                    Other
+                  </Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          </TouchableOpacity>
+        </Modal>
       </Modal>
     </ScrollView>
   );
@@ -928,14 +1339,12 @@ const styles = StyleSheet.create({
     borderColor: '#374151',
   },
   cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: 'column',
     marginBottom: 16,
-    gap: 16,
+    gap: 12,
   },
   cardHeaderLeft: {
-    flex: 1,
+    width: '100%',
   },
   cardTitle: {
     fontSize: 18,
@@ -1018,8 +1427,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderWidth: 1,
     borderColor: '#e5e7eb',
-    minWidth: 200,
-    maxWidth: 300,
+    flex: 1,
   },
   searchContainerDark: {
     backgroundColor: '#374151',
@@ -1513,5 +1921,168 @@ const styles = StyleSheet.create({
   },
   paystubGalleryDescriptionDark: {
     color: '#9BA1A6',
+  },
+  headerControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    width: '100%',
+  },
+  filterButton: {
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  filterButtonDark: {
+    backgroundColor: '#374151',
+    borderColor: '#4b5563',
+  },
+  filterButtonActive: {
+    backgroundColor: '#0a7ea4',
+    borderColor: '#0a7ea4',
+  },
+  filterChipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
+    marginTop: -8,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#e5e7eb',
+    gap: 6,
+  },
+  filterChipDark: {
+    backgroundColor: '#374151',
+  },
+  filterChipText: {
+    fontSize: 12,
+    color: '#374151',
+    fontWeight: '500',
+  },
+  filterChipTextDark: {
+    color: '#9BA1A6',
+  },
+  filterChipClose: {
+    padding: 2,
+  },
+  filterPanel: {
+    backgroundColor: '#f9fafb',
+    borderRadius: 8,
+    padding: 16,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  filterPanelDark: {
+    backgroundColor: '#374151',
+    borderColor: '#4b5563',
+  },
+  filterPanelHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  filterPanelTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#11181C',
+  },
+  filterPanelTitleDark: {
+    color: '#ECEDEE',
+  },
+  filterClearAll: {
+    fontSize: 14,
+    color: '#0a7ea4',
+    fontWeight: '500',
+  },
+  filterClearAllDark: {
+    color: '#60a5fa',
+  },
+  filterGroup: {
+    marginBottom: 16,
+  },
+  filterLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 8,
+    color: '#374151',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  filterLabelDark: {
+    color: '#9BA1A6',
+  },
+  filterSelectButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: '#fff',
+  },
+  filterSelectButtonDark: {
+    backgroundColor: '#1f2937',
+    borderColor: '#4b5563',
+  },
+  filterSelectText: {
+    fontSize: 14,
+    color: '#11181C',
+    fontWeight: '500',
+  },
+  filterSelectTextDark: {
+    color: '#ECEDEE',
+  },
+  filterInput: {
+    borderWidth: 1.5,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#11181C',
+    backgroundColor: '#fff',
+  },
+  filterInputDark: {
+    backgroundColor: '#1f2937',
+    borderColor: '#4b5563',
+    color: '#ECEDEE',
+  },
+  filterInputHalf: {
+    flex: 1,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  filterInputText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#11181C',
+    borderWidth: 0,
+    paddingLeft: 4,
+    paddingRight: 0,
+    paddingVertical: 0,
+    backgroundColor: 'transparent',
+  },
+  filterInputTextDark: {
+    color: '#ECEDEE',
+  },
+  pickerOptionTextSelected: {
+    color: '#0a7ea4',
+    fontWeight: '600',
   },
 });

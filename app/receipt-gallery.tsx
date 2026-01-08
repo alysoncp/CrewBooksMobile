@@ -4,7 +4,7 @@ import { apiGet, apiRequest } from '@/lib/api';
 import { API_URL } from '@/lib/config';
 import { formatDate } from '@/lib/format';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -42,6 +42,7 @@ export default function ReceiptGallery() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { taxYear } = useTaxYear();
+  const { receiptId } = useLocalSearchParams<{ receiptId?: string }>();
 
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -54,6 +55,17 @@ export default function ReceiptGallery() {
   useEffect(() => {
     fetchReceipts();
   }, [taxYear]);
+
+  // Auto-open receipt if receiptId is provided
+  useEffect(() => {
+    if (receiptId && receipts.length > 0 && !isLoading) {
+      const receipt = receipts.find((r) => r.id === receiptId);
+      if (receipt) {
+        setSelectedReceipt(receipt);
+        setIsImageModalOpen(true);
+      }
+    }
+  }, [receiptId, receipts, isLoading]);
 
   const fetchReceipts = async () => {
     try {

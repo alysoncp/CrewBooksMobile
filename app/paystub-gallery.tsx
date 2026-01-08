@@ -4,7 +4,7 @@ import { apiGet, apiRequest } from '@/lib/api';
 import { API_URL } from '@/lib/config';
 import { formatDate } from '@/lib/format';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -42,6 +42,7 @@ export default function PaystubGallery() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { taxYear } = useTaxYear();
+  const { paystubId } = useLocalSearchParams<{ paystubId?: string }>();
 
   const [paystubs, setPaystubs] = useState<Paystub[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -54,6 +55,17 @@ export default function PaystubGallery() {
   useEffect(() => {
     fetchPaystubs();
   }, [taxYear]);
+
+  // Auto-open paystub if paystubId is provided
+  useEffect(() => {
+    if (paystubId && paystubs.length > 0 && !isLoading) {
+      const paystub = paystubs.find((p) => p.id === paystubId);
+      if (paystub) {
+        setSelectedPaystub(paystub);
+        setIsImageModalOpen(true);
+      }
+    }
+  }, [paystubId, paystubs, isLoading]);
 
   const fetchPaystubs = async () => {
     try {
