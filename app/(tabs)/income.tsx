@@ -6,6 +6,7 @@ import { formatCurrency, formatDate, getIncomeTypeLabel, getTodayLocalDateString
 import { type Income } from '@/lib/types';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -48,6 +49,7 @@ export default function Income() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { user } = useAuth();
   const { taxYear } = useTaxYear();
   const hasGstNumber = user?.hasGstNumber === true;
@@ -493,6 +495,27 @@ export default function Income() {
           </View>
         )}
       </View>
+
+      <TouchableOpacity
+        style={[styles.paystubGalleryCard, isDark && styles.paystubGalleryCardDark]}
+        onPress={() => router.push('/paystub-gallery')}
+        activeOpacity={0.7}
+      >
+        <View style={styles.paystubGalleryCardContent}>
+          <View style={[styles.paystubGalleryIcon, isDark && styles.paystubGalleryIconDark]}>
+            <MaterialIcons name="photo-library" size={24} color={isDark ? '#ECEDEE' : '#11181C'} />
+          </View>
+          <View style={styles.paystubGalleryText}>
+            <Text style={[styles.paystubGalleryTitle, isDark && styles.paystubGalleryTitleDark]}>
+              Paystub Gallery
+            </Text>
+            <Text style={[styles.paystubGalleryDescription, isDark && styles.paystubGalleryDescriptionDark]}>
+              View and manage your paystub images
+            </Text>
+          </View>
+          <MaterialIcons name="chevron-right" size={24} color={isDark ? '#9BA1A6' : '#666'} />
+        </View>
+      </TouchableOpacity>
 
       <View style={[styles.card, isDark && styles.cardDark]}>
         <View style={styles.cardHeader}>
@@ -1429,5 +1452,58 @@ const styles = StyleSheet.create({
   },
   pickerOptionTextDark: {
     color: '#ECEDEE',
+  },
+  paystubGalleryCard: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 16,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  paystubGalleryCardDark: {
+    backgroundColor: '#1f2937',
+    borderColor: '#374151',
+  },
+  paystubGalleryCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  paystubGalleryIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: '#f3f4f6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  paystubGalleryIconDark: {
+    backgroundColor: '#374151',
+  },
+  paystubGalleryText: {
+    flex: 1,
+  },
+  paystubGalleryTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#11181C',
+    marginBottom: 2,
+  },
+  paystubGalleryTitleDark: {
+    color: '#ECEDEE',
+  },
+  paystubGalleryDescription: {
+    fontSize: 14,
+    color: '#666',
+  },
+  paystubGalleryDescriptionDark: {
+    color: '#9BA1A6',
   },
 });
