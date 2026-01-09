@@ -7,17 +7,17 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -247,6 +247,15 @@ export default function VehiclesPage() {
           )}
         </View>
         <View style={styles.vehicleCardActions}>
+          <TouchableOpacity
+            onPress={() => router.push({
+              pathname: '/odometer-gallery',
+              params: { vehicleId: item.id, vehicleName: item.name || 'Vehicle' }
+            })}
+            style={styles.vehicleActionButton}
+          >
+            <MaterialIcons name="photo-library" size={20} color={isDark ? '#9BA1A6' : '#666'} />
+          </TouchableOpacity>
           <TouchableOpacity
             onPress={() => handleEdit(item)}
             style={styles.vehicleActionButton}
