@@ -4,6 +4,7 @@ import { apiGet, apiRequest } from '@/lib/api';
 import { formatCurrency } from '@/lib/format';
 import { type Vehicle } from '@/lib/types';
 import { MaterialIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
@@ -50,6 +51,12 @@ export default function VehiclesPage() {
   const [showCcaClassPicker, setShowCcaClassPicker] = useState(false);
   const [mileageLoggingStyle, setMileageLoggingStyle] = useState<'trip_distance' | 'odometer'>('trip_distance');
   const [showMileageStylePicker, setShowMileageStylePicker] = useState(false);
+  const [newlyCreatedVehicleId, setNewlyCreatedVehicleId] = useState<string | null>(null);
+  const [showInitialPhotoPrompt, setShowInitialPhotoPrompt] = useState(false);
+  const [dismissedReminders, setDismissedReminders] = useState<Record<string, number>>({});
+  const [showYearStartPrompt, setShowYearStartPrompt] = useState(false);
+  const [vehiclesNeedingYearStartPhoto, setVehiclesNeedingYearStartPhoto] = useState<Vehicle[]>([]);
+  const [vehiclePhotos, setVehiclePhotos] = useState<Record<string, any[]>>({});
 
   const [formData, setFormData] = useState<VehicleFormData>({
     name: '',
@@ -68,17 +75,103 @@ export default function VehiclesPage() {
   useEffect(() => {
     fetchVehicles();
     fetchMileageLoggingStyle();
+    loadDismissedReminders();
   }, []);
+
+  // Load dismissed reminders from AsyncStorage on mount
+  const loadDismissedReminders = async () => {
+    try {
+      const stored = await AsyncStorage.getItem('odometerPhotoReminders');
+      if (stored) {
+        setDismissedReminders(JSON.parse(stored));
+      }
+    } catch (e) {
+      console.error('Failed to load dismissed reminders', e);
+    }
+  };
+
+  // Helper to check if reminder should be shown for a vehicle
+  const shouldShowReminder = (vehicleId: string): boolean => {
+    const dismissedTime = dismissedReminders[vehicleId];
+    if (!dismissedTime) return true; // Never dismissed, show it
+    const hoursSinceDismissal = (Date.now() - dismissedTime) / (1000 * 60 * 60);
+    return hoursSinceDismissal >= 24; // Show again after 24 hours
+  };
+
+  // Dismiss reminder for a vehicle
+  const dismissReminder = async (vehicleId: string) => {
+    const updated = { ...dismissedReminders, [vehicleId]: Date.now() };
+    setDismissedReminders(updated);
+    try {
+      await AsyncStorage.setItem('odometerPhotoReminders', JSON.stringify(updated));
+    } catch (e) {
+      console.error('Failed to save dismissed reminder', e);
+    }
+  };
 
   const fetchVehicles = async () => {
     try {
       const data = await apiGet<Vehicle[]>('/api/vehicles');
       setVehicles(data);
+      // Fetch photos for all vehicles (this will also check for year-start photos)
+      await fetchVehiclePhotos(data);
     } catch (error) {
       console.error('Error fetching vehicles:', error);
       Alert.alert('Error', 'Failed to load vehicles');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchVehiclePhotos = async (vehiclesList: Vehicle[]) => {
+    const photosMap: Record<string, any[]> = {};
+    for (const vehicle of vehiclesList) {
+      try {
+        const photos = await apiGet<any[]>(`/api/vehicles/${vehicle.id}/odometer-photos`);
+        photosMap[vehicle.id] = photos || [];
+      } catch (error) {
+        // Silently fail - vehicle may not have photos endpoint yet
+        photosMap[vehicle.id] = [];
+      }
+    }
+    setVehiclePhotos(photosMap);
+    // Check for year-start photos after photos are loaded
+    checkYearStartPhotos(vehiclesList, photosMap);
+  };
+
+  const checkYearStartPhotos = (vehiclesList: Vehicle[], photosMap: Record<string, any[]>) => {
+    const currentYear = new Date().getFullYear().toString();
+    const currentYearStart = `${currentYear}-01-01`;
+    const vehiclesNeedingPhotos: Vehicle[] = [];
+
+    for (const vehicle of vehiclesList) {
+      try {
+        const photos = photosMap[vehicle.id] || [];
+        const currentYearPhotos = photos.filter((photo: any) => {
+          const photoDate = photo.photoDate || photo.readingDate || '';
+          return photoDate >= currentYearStart;
+        });
+
+        if (currentYearPhotos.length === 0) {
+          // Check if there are any photos at all (from previous years)
+          if (photos.length === 0 || (photos.length > 0 && (photos[0].photoDate || photos[0].readingDate || '') < currentYearStart)) {
+            vehiclesNeedingPhotos.push(vehicle);
+          }
+        }
+      } catch (e) {
+        console.error(`Failed to check photos for vehicle ${vehicle.id}`, e);
+      }
+    }
+
+    if (vehiclesNeedingPhotos.length > 0) {
+      setVehiclesNeedingYearStartPhoto(vehiclesNeedingPhotos);
+      // Check if we should show the prompt (not dismissed today)
+      const dismissedKey = `yearStartPrompt_${currentYear}`;
+      const dismissedTime = dismissedReminders[dismissedKey];
+      const shouldShow = !dismissedTime || (Date.now() - dismissedTime) >= 24 * 60 * 60 * 1000;
+      if (shouldShow) {
+        setShowYearStartPrompt(true);
+      }
     }
   };
 
@@ -144,7 +237,10 @@ export default function VehiclesPage() {
         await apiRequest('PATCH', `/api/vehicles/${editingVehicle.id}`, payload);
         Alert.alert('Success', 'Vehicle updated successfully');
       } else {
-        await apiRequest('POST', '/api/vehicles', payload);
+        const response = await apiRequest('POST', '/api/vehicles', payload);
+        const newVehicle = await response.json();
+        setNewlyCreatedVehicleId(newVehicle.id);
+        setShowInitialPhotoPrompt(true);
         Alert.alert('Success', 'Vehicle added successfully');
       }
 
@@ -314,6 +410,44 @@ export default function VehiclesPage() {
             </Text>
           </View>
         )}
+        {/* Photo Status Display */}
+        {(() => {
+          const photos = vehiclePhotos[item.id] || [];
+          const currentYear = new Date().getFullYear().toString();
+          const currentYearStart = `${currentYear}-01-01`;
+          const currentYearPhotos = photos.filter((photo: any) => {
+            const photoDate = photo.photoDate || photo.readingDate || '';
+            return photoDate >= currentYearStart;
+          });
+          const hasCurrentYearPhotos = currentYearPhotos.length > 0;
+          const hasAnyPhotos = photos.length > 0;
+
+          return (
+            <View style={styles.vehiclePhotoStatus}>
+              <View style={styles.vehiclePhotoStatusRow}>
+                <Text style={[styles.vehiclePhotoStatusLabel, isDark && styles.vehiclePhotoStatusLabelDark]}>
+                  Odometer Photos:
+                </Text>
+                <View style={[
+                  styles.photoStatusBadge,
+                  hasCurrentYearPhotos ? styles.photoStatusBadgeGood : hasAnyPhotos ? styles.photoStatusBadgeWarning : styles.photoStatusBadgeError,
+                  isDark && styles.photoStatusBadgeDark
+                ]}>
+                  <Text style={[
+                    styles.photoStatusBadgeText,
+                    isDark && styles.photoStatusBadgeTextDark
+                  ]}>
+                    {hasCurrentYearPhotos 
+                      ? `${currentYearPhotos.length} photo${currentYearPhotos.length !== 1 ? 's' : ''} this year`
+                      : hasAnyPhotos
+                      ? `Needs ${currentYear} photo`
+                      : 'No photos'}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          );
+        })()}
       </View>
     </View>
   );
@@ -372,6 +506,101 @@ export default function VehiclesPage() {
             : 'Enter the distance for each trip. The system calculates cumulative odometer readings automatically.'}
         </Text>
       </View>
+
+      {/* Year-Start Photo Prompt */}
+      {showYearStartPrompt && vehiclesNeedingYearStartPhoto.length > 0 && (
+        <View style={[styles.alertCard, styles.yearStartAlert, isDark && styles.alertCardDark]}>
+          <View style={styles.alertHeader}>
+            <MaterialIcons name="info" size={20} color={isDark ? '#60a5fa' : '#2563eb'} />
+            <Text style={[styles.alertTitle, isDark && styles.alertTitleDark]}>
+              New Tax Year - Upload Odometer Photos
+            </Text>
+          </View>
+          <Text style={[styles.alertDescription, isDark && styles.alertDescriptionDark]}>
+            It's a new tax year! Please upload odometer photos for the following vehicles to ensure accurate calculations:
+          </Text>
+          {vehiclesNeedingYearStartPhoto.map(vehicle => (
+            <Text key={vehicle.id} style={[styles.alertVehicleName, isDark && styles.alertVehicleNameDark]}>
+              • {vehicle.name}
+            </Text>
+          ))}
+          <View style={styles.alertActions}>
+            <TouchableOpacity
+              style={[styles.alertButton, styles.alertButtonPrimary]}
+              onPress={() => {
+                if (vehiclesNeedingYearStartPhoto.length > 0) {
+                  const firstVehicle = vehiclesNeedingYearStartPhoto[0];
+                  router.push({
+                    pathname: '/odometer-gallery',
+                    params: { vehicleId: firstVehicle.id, vehicleName: firstVehicle.name || 'Vehicle' }
+                  });
+                }
+              }}
+            >
+              <Text style={styles.alertButtonText}>Upload Photos</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.alertButton, styles.alertButtonSecondary, isDark && styles.alertButtonSecondaryDark]}
+              onPress={async () => {
+                const currentYear = new Date().getFullYear().toString();
+                const dismissedKey = `yearStartPrompt_${currentYear}`;
+                const updated = { ...dismissedReminders, [dismissedKey]: Date.now() };
+                setDismissedReminders(updated);
+                try {
+                  await AsyncStorage.setItem('odometerPhotoReminders', JSON.stringify(updated));
+                } catch (e) {
+                  console.error('Failed to save dismissed reminder', e);
+                }
+                setShowYearStartPrompt(false);
+              }}
+            >
+              <Text style={[styles.alertButtonTextSecondary, isDark && styles.alertButtonTextSecondaryDark]}>
+                Remind me later
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* Reminder Banners for Vehicles Missing Photos */}
+      {vehicles.map((vehicle) => {
+        const photos = vehiclePhotos[vehicle.id] || [];
+        if (photos.length > 0 || !shouldShowReminder(vehicle.id)) {
+          return null;
+        }
+        return (
+          <View key={`reminder-${vehicle.id}`} style={[styles.alertCard, isDark && styles.alertCardDark]}>
+            <View style={styles.alertHeader}>
+              <MaterialIcons name="warning" size={20} color={isDark ? '#fbbf24' : '#d97706'} />
+              <Text style={[styles.alertTitle, isDark && styles.alertTitleDark]}>
+                Upload Odometer Photo for {vehicle.name}
+              </Text>
+            </View>
+            <Text style={[styles.alertDescription, isDark && styles.alertDescriptionDark]}>
+              Upload a photo of your odometer to help calculate business use percentage accurately.
+            </Text>
+            <View style={styles.alertActions}>
+              <TouchableOpacity
+                style={[styles.alertButton, styles.alertButtonPrimary]}
+                onPress={() => {
+                  router.push({
+                    pathname: '/odometer-gallery',
+                    params: { vehicleId: vehicle.id, vehicleName: vehicle.name || 'Vehicle' }
+                  });
+                }}
+              >
+                <Text style={styles.alertButtonText}>Upload Photo</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.alertDismissButton}
+                onPress={() => dismissReminder(vehicle.id)}
+              >
+                <MaterialIcons name="close" size={20} color={isDark ? '#9BA1A6' : '#666'} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        );
+      })}
 
       {/* Vehicles List */}
       <View style={[styles.card, isDark && styles.cardDark]}>
@@ -525,6 +754,74 @@ export default function VehiclesPage() {
             </ScrollView>
           </View>
         </TouchableOpacity>
+      </Modal>
+
+      {/* Initial Photo Upload Prompt Modal */}
+      <Modal
+        visible={showInitialPhotoPrompt}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setShowInitialPhotoPrompt(false);
+          setNewlyCreatedVehicleId(null);
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.photoPromptModal, isDark && styles.photoPromptModalDark]}>
+            <View style={styles.photoPromptHeader}>
+              <Text style={[styles.photoPromptTitle, isDark && styles.photoPromptTitleDark]}>
+                Upload Initial Odometer Photo
+              </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowInitialPhotoPrompt(false);
+                  setNewlyCreatedVehicleId(null);
+                }}
+              >
+                <MaterialIcons name="close" size={24} color={isDark ? '#ECEDEE' : '#11181C'} />
+              </TouchableOpacity>
+            </View>
+            <Text style={[styles.photoPromptDescription, isDark && styles.photoPromptDescriptionDark]}>
+              We recommend uploading a photo of your odometer to help calculate your business use percentage. 
+              This photo will document your starting mileage for the tax year.
+            </Text>
+            <Text style={[styles.photoPromptSubtext, isDark && styles.photoPromptSubtextDark]}>
+              You can skip this for now, but we'll remind you to upload a photo later. 
+              Photos help ensure accurate tax calculations.
+            </Text>
+            <View style={styles.photoPromptActions}>
+              <TouchableOpacity
+                style={[styles.photoPromptButton, styles.photoPromptButtonSecondary, isDark && styles.photoPromptButtonSecondaryDark]}
+                onPress={() => {
+                  setShowInitialPhotoPrompt(false);
+                  setNewlyCreatedVehicleId(null);
+                }}
+              >
+                <Text style={[styles.photoPromptButtonText, isDark && styles.photoPromptButtonTextDark]}>
+                  Skip for now
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.photoPromptButton, styles.photoPromptButtonPrimary]}
+                onPress={() => {
+                  if (newlyCreatedVehicleId) {
+                    const vehicle = vehicles.find(v => v.id === newlyCreatedVehicleId);
+                    if (vehicle) {
+                      setShowInitialPhotoPrompt(false);
+                      router.push({
+                        pathname: '/odometer-gallery',
+                        params: { vehicleId: newlyCreatedVehicleId, vehicleName: vehicle.name || 'Vehicle' }
+                      });
+                      setNewlyCreatedVehicleId(null);
+                    }
+                  }
+                }}
+              >
+                <Text style={styles.photoPromptButtonTextPrimary}>Upload Photo</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
 
       {/* Add/Edit Vehicle Modal */}
@@ -1250,6 +1547,227 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  alertCard: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  alertCardDark: {
+    backgroundColor: '#1f2937',
+    borderColor: '#374151',
+  },
+  yearStartAlert: {
+    borderColor: '#60a5fa',
+    backgroundColor: '#eff6ff',
+  },
+  alertHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  alertTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#11181C',
+    flex: 1,
+  },
+  alertTitleDark: {
+    color: '#ECEDEE',
+  },
+  alertDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+  },
+  alertDescriptionDark: {
+    color: '#9BA1A6',
+  },
+  alertVehicleName: {
+    fontSize: 14,
+    color: '#11181C',
+    marginLeft: 8,
+    marginBottom: 4,
+  },
+  alertVehicleNameDark: {
+    color: '#ECEDEE',
+  },
+  alertActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  alertButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  alertButtonPrimary: {
+    backgroundColor: '#0a7ea4',
+  },
+  alertButtonSecondary: {
+    backgroundColor: '#f3f4f6',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  alertButtonSecondaryDark: {
+    backgroundColor: '#374151',
+    borderColor: '#4b5563',
+  },
+  alertButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  alertButtonTextSecondary: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#11181C',
+  },
+  alertButtonTextSecondaryDark: {
+    color: '#ECEDEE',
+  },
+  alertDismissButton: {
+    padding: 8,
+    marginLeft: 'auto',
+  },
+  vehiclePhotoStatus: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+  },
+  vehiclePhotoStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  vehiclePhotoStatusLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  vehiclePhotoStatusLabelDark: {
+    color: '#9BA1A6',
+  },
+  photoStatusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  photoStatusBadgeGood: {
+    backgroundColor: '#d1fae5',
+  },
+  photoStatusBadgeWarning: {
+    backgroundColor: '#fef3c7',
+  },
+  photoStatusBadgeError: {
+    backgroundColor: '#fee2e2',
+  },
+  photoStatusBadgeDark: {
+    backgroundColor: '#374151',
+  },
+  photoStatusBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#065f46',
+  },
+  photoStatusBadgeTextDark: {
+    color: '#9BA1A6',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  photoPromptModal: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    width: '100%',
+    maxWidth: 400,
+  },
+  photoPromptModalDark: {
+    backgroundColor: '#1f2937',
+  },
+  photoPromptHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  photoPromptTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#11181C',
+    flex: 1,
+  },
+  photoPromptTitleDark: {
+    color: '#ECEDEE',
+  },
+  photoPromptDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 12,
+    lineHeight: 20,
+  },
+  photoPromptDescriptionDark: {
+    color: '#9BA1A6',
+  },
+  photoPromptSubtext: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 20,
+    lineHeight: 18,
+  },
+  photoPromptSubtextDark: {
+    color: '#9BA1A6',
+  },
+  photoPromptActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  photoPromptButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoPromptButtonPrimary: {
+    backgroundColor: '#0a7ea4',
+  },
+  photoPromptButtonSecondary: {
+    backgroundColor: '#f3f4f6',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  photoPromptButtonSecondaryDark: {
+    backgroundColor: '#374151',
+    borderColor: '#4b5563',
+  },
+  photoPromptButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#11181C',
+  },
+  photoPromptButtonTextDark: {
+    color: '#ECEDEE',
+  },
+  photoPromptButtonTextPrimary: {
+    fontSize: 14,
     fontWeight: '600',
     color: '#fff',
   },
