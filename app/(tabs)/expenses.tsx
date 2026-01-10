@@ -646,7 +646,39 @@ export default function Expenses() {
               {formatDate(item.date)}
             </Text>
           </View>
-          <Text style={styles.expenseCardAmount}>-{formatCurrency(item.amount)}</Text>
+          <View style={styles.expenseCardActions}>
+            {hasLinkedReceipt && (() => {
+              const linkedReceipt = receipts.find((r) => r.linkedExpenseId === item.id);
+              return (
+                <TouchableOpacity
+                  onPress={() => router.push({
+                    pathname: '/receipt-gallery',
+                    params: { receiptId: linkedReceipt?.id }
+                  })}
+                  style={styles.expenseActionButton}
+                >
+                  <MaterialIcons name="receipt" size={20} color={isDark ? '#9BA1A6' : '#666'} />
+                </TouchableOpacity>
+              );
+            })()}
+            <TouchableOpacity
+              onPress={() => handleEdit(item)}
+              style={styles.expenseActionButton}
+            >
+              <MaterialIcons name="edit" size={20} color={isDark ? '#9BA1A6' : '#666'} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => handleDelete(item.id)}
+              disabled={deleteId === item.id}
+              style={styles.expenseActionButton}
+            >
+              {deleteId === item.id ? (
+                <ActivityIndicator size="small" color="#ef4444" />
+              ) : (
+                <MaterialIcons name="delete" size={20} color={isDark ? '#9BA1A6' : '#666'} />
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
         
         <View style={styles.expenseCardBody}>
@@ -686,38 +718,11 @@ export default function Expenses() {
                 </View>
               )}
             </View>
-            <View style={styles.expenseCardActions}>
-              {hasLinkedReceipt && (() => {
-                const linkedReceipt = receipts.find((r) => r.linkedExpenseId === item.id);
-                return (
-                  <TouchableOpacity
-                    onPress={() => router.push({
-                      pathname: '/receipt-gallery',
-                      params: { receiptId: linkedReceipt?.id }
-                    })}
-                    style={styles.expenseActionButton}
-                  >
-                    <MaterialIcons name="receipt" size={20} color={isDark ? '#9BA1A6' : '#666'} />
-                  </TouchableOpacity>
-                );
-              })()}
-              <TouchableOpacity
-                onPress={() => handleEdit(item)}
-                style={styles.expenseActionButton}
-              >
-                <MaterialIcons name="edit" size={20} color={isDark ? '#9BA1A6' : '#666'} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => handleDelete(item.id)}
-                disabled={deleteId === item.id}
-                style={styles.expenseActionButton}
-              >
-                {deleteId === item.id ? (
-                  <ActivityIndicator size="small" color="#ef4444" />
-                ) : (
-                  <MaterialIcons name="delete" size={20} color={isDark ? '#9BA1A6' : '#666'} />
-                )}
-              </TouchableOpacity>
+            <View style={[styles.expenseCardStat, styles.expenseCardStatRight]}>
+              <Text style={[styles.expenseCardStatLabel, isDark && styles.expenseCardStatLabelDark]}>Total</Text>
+              <Text style={[styles.expenseCardStatValue, styles.expenseCardStatValueRed, isDark && styles.expenseCardStatValueRedDark]}>
+                -{formatCurrency(item.amount)}
+              </Text>
             </View>
           </View>
         </View>
@@ -1821,9 +1826,6 @@ const styles = StyleSheet.create({
     color: '#9BA1A6',
   },
   expenseCardAmount: {
-    fontSize: 18,
-    fontWeight: '600',
-    fontFamily: 'monospace',
     color: '#ef4444',
   },
   expenseCardBody: {
@@ -1870,6 +1872,9 @@ const styles = StyleSheet.create({
   expenseCardStat: {
     gap: 4,
   },
+  expenseCardStatRight: {
+    alignItems: 'flex-end',
+  },
   expenseCardStatLabel: {
     fontSize: 11,
     color: '#666',
@@ -1893,6 +1898,12 @@ const styles = StyleSheet.create({
   },
   expenseCardStatValueBlueDark: {
     color: '#60a5fa',
+  },
+  expenseCardStatValueRed: {
+    color: '#ef4444',
+  },
+  expenseCardStatValueRedDark: {
+    color: '#ef4444',
   },
   expenseCardActions: {
     flexDirection: 'row',
