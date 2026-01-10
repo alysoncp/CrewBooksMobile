@@ -5,16 +5,16 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -32,7 +32,7 @@ export default function ProfilePage() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
-  const [taxFilingStatus, setTaxFilingStatus] = useState(TAX_FILING_STATUS.PERSONAL_ONLY);
+  const [taxFilingStatus, setTaxFilingStatus] = useState<typeof TAX_FILING_STATUS[keyof typeof TAX_FILING_STATUS]>(TAX_FILING_STATUS.PERSONAL_ONLY);
   const [userType, setUserType] = useState<string | null>(null);
   const [unionAffiliations, setUnionAffiliations] = useState<UnionAffiliation[]>([]);
   const [hasAgent, setHasAgent] = useState(false);
@@ -411,7 +411,7 @@ export default function ProfilePage() {
                         style={[styles.select, isDark && styles.selectDark]}
                         onPress={() => {
                           setSelectedUnionForLevel('actra');
-                          setShowUnionLevelPicker(true);
+                          setShowUnionLevelPicker('actra');
                         }}
                       >
                         <Text style={[styles.selectText, isDark && styles.selectTextDark]}>
@@ -456,7 +456,7 @@ export default function ProfilePage() {
                         style={[styles.select, isDark && styles.selectDark]}
                         onPress={() => {
                           setSelectedUnionForLevel('ubcp');
-                          setShowUnionLevelPicker(true);
+                          setShowUnionLevelPicker('ubcp');
                         }}
                       >
                         <Text style={[styles.selectText, isDark && styles.selectTextDark]}>
@@ -504,7 +504,7 @@ export default function ProfilePage() {
                       style={[styles.select, isDark && styles.selectDark]}
                       onPress={() => {
                         setSelectedUnionForLevel('iatse');
-                        setShowUnionLevelPicker(true);
+                        setShowUnionLevelPicker('iatse');
                       }}
                     >
                       <Text style={[styles.selectText, isDark && styles.selectTextDark]}>
@@ -830,12 +830,15 @@ const styles = StyleSheet.create({
   },
   headerText: {
     flex: 1,
+    flexShrink: 1,
   },
   title: {
     fontSize: 24,
     fontWeight: '600',
     marginBottom: 4,
     color: '#11181C',
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   titleDark: {
     color: '#ECEDEE',
@@ -843,6 +846,8 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     color: '#666',
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   subtitleDark: {
     color: '#9BA1A6',
@@ -898,6 +903,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#11181C',
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   tierNameDark: {
     color: '#ECEDEE',
@@ -925,6 +932,8 @@ const styles = StyleSheet.create({
   tierPrice: {
     fontSize: 14,
     color: '#666',
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   tierPriceDark: {
     color: '#9BA1A6',
@@ -978,6 +987,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 4,
     color: '#11181C',
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   cardTitleDark: {
     color: '#ECEDEE',
@@ -985,6 +996,8 @@ const styles = StyleSheet.create({
   cardDescription: {
     fontSize: 14,
     color: '#666',
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   cardDescriptionDark: {
     color: '#9BA1A6',
@@ -999,6 +1012,8 @@ const styles = StyleSheet.create({
     color: '#11181C',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   labelDark: {
     color: '#ECEDEE',
@@ -1027,6 +1042,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     marginTop: 4,
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    lineHeight: 16,
   },
   helperTextDark: {
     color: '#9BA1A6',
@@ -1071,6 +1089,8 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginBottom: 4,
     color: '#11181C',
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   radioOptionTitleDark: {
     color: '#ECEDEE',
@@ -1080,10 +1100,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     marginBottom: 4,
+    flexWrap: 'wrap',
   },
   radioOptionSubtitle: {
     fontSize: 12,
     color: '#666',
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    lineHeight: 16,
   },
   radioOptionSubtitleDark: {
     color: '#9BA1A6',
@@ -1116,6 +1140,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: '#11181C',
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   unionNameDark: {
     color: '#ECEDEE',
@@ -1138,6 +1164,8 @@ const styles = StyleSheet.create({
   selectText: {
     fontSize: 16,
     color: '#11181C',
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   selectTextDark: {
     color: '#ECEDEE',
@@ -1151,16 +1179,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e5e7eb',
     marginBottom: 16,
+    flexWrap: 'wrap',
   },
   switchRowLeft: {
     flex: 1,
     marginRight: 16,
+    flexShrink: 1,
+    minWidth: 200,
   },
   switchLabel: {
     fontSize: 16,
     fontWeight: '500',
     marginBottom: 4,
     color: '#11181C',
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   switchLabelDark: {
     color: '#ECEDEE',
@@ -1168,6 +1201,9 @@ const styles = StyleSheet.create({
   switchHelper: {
     fontSize: 12,
     color: '#666',
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    lineHeight: 16,
   },
   switchHelperDark: {
     color: '#9BA1A6',
@@ -1281,6 +1317,8 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#11181C',
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   modalTitleDark: {
     color: '#ECEDEE',
@@ -1302,6 +1340,8 @@ const styles = StyleSheet.create({
   modalOptionText: {
     fontSize: 16,
     color: '#11181C',
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   modalOptionTextDark: {
     color: '#ECEDEE',
