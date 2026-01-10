@@ -2,7 +2,7 @@ import { useTaxYear } from '@/contexts/TaxYearContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/hooks/useAuth';
 import { apiGet } from '@/lib/api';
-import { formatCurrency, formatPercent, getCategoryLabel, getYearFromDateString } from '@/lib/format';
+import { formatCurrency, getCategoryLabel, getYearFromDateString } from '@/lib/format';
 import { type Expense, type Vehicle, HOME_OFFICE_LIVING_CATEGORIES } from '@/lib/types';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -269,6 +269,7 @@ export default function Dashboard() {
   // Recalculate totals from filtered data
   const totalIncome = filteredIncome.reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0);
   const totalExpenses = filteredExpenses.reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0);
+  const netCashflow = totalIncome - totalExpenses;
   
   // Calculate deductible expenses using the helper function
   const deductibleExpenses = useMemo(() => {
@@ -418,25 +419,13 @@ export default function Dashboard() {
           trend={netIncome > 0 ? 'up' : 'down'}
           isLoading={isLoading}
         />
-        <View style={[styles.card, isDark && styles.cardDark]}>
-          <View style={styles.cardHeader}>
-            <Text style={[styles.cardTitle, isDark && styles.cardTitleDark]}>{taxLabel}</Text>
-          </View>
-          <View style={styles.cardContent}>
-            {isLoading ? (
-              <ActivityIndicator size="small" color={isDark ? '#9BA1A6' : '#666'} />
-            ) : (
-              <>
-                <Text style={[styles.valueText, isRefund ? styles.refundText : styles.owedText]}>
-                  {formatCurrency(Math.abs(totalTaxOwed))}
-                </Text>
-                <Text style={[styles.subtitle, isDark && styles.subtitleDark]}>
-                  {`${formatPercent(effectiveRate)} effective rate`}
-                </Text>
-              </>
-            )}
-          </View>
-        </View>
+        <StatCard
+          title="Net Cashflow"
+          value={formatCurrency(netCashflow)}
+          subtitle="Income minus expenses"
+          trend={netCashflow > 0 ? 'up' : 'down'}
+          isLoading={isLoading}
+        />
       </View>
 
       <View style={[styles.section, isDark && styles.sectionDark]}>

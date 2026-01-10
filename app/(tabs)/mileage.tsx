@@ -130,8 +130,9 @@ export default function VehicleMileagePage() {
 
   // Calculate distances and totals
   const sortedLogs = useMemo(() => {
+    const taxYearNum = Number(taxYear);
     const sorted = [...mileageLogs]
-      .filter((log) => getYearFromDateString(log.date) === taxYear)
+      .filter((log) => getYearFromDateString(log.date) === taxYearNum)
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     return sorted.map((log, index) => {
       let distance = 0;
@@ -160,9 +161,92 @@ export default function VehicleMileagePage() {
 
   const currentYear = new Date().getFullYear();
   const isCurrentYear = Number(taxYear) === currentYear;
+  const today = getTodayLocalDateString();
   
-  // Use total mileage from API (used for business percentage calculation) if available, otherwise calculate from logs
-  const totalMileage = totalMileageFromAPI !== null ? totalMileageFromAPI : sortedLogs.reduce((sum, log) => sum + (log.distance || 0), 0);
+  // Calculate previous year's total mileage
+  const previousYearTotalMileage = useMemo(() => {
+    if (!isCurrentYear || !selectedVehicleId) return null;
+    
+    const previousYearNum = currentYear - 1;
+    const previousYearLogs = mileageLogs
+      .filter((log) => getYearFromDateString(log.date) === previousYearNum)
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    
+    if (previousYearLogs.length === 0) return null;
+    
+    // Find the starting odometer reading for previous year
+    // Look for logs from the year before previous year to get the last reading before previous year started
+    const logsBeforePreviousYear = mileageLogs
+      .filter((log) => {
+        const logYear = getYearFromDateString(log.date);
+        return logYear < previousYearNum;
+      })
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    
+    let startingMileageForPreviousYear = 0;
+    if (logsBeforePreviousYear.length > 0) {
+      // Use the last log's odometer reading before previous year as starting point
+      const lastLogBefore = logsBeforePreviousYear[logsBeforePreviousYear.length - 1];
+      startingMileageForPreviousYear = Number(lastLogBefore.odometerReading);
+    } else if (selectedVehicle?.currentMileage) {
+      // Fallback: try to estimate from current mileage (less accurate)
+      // Actually, this won't work well. Let's just use the first log's reading as baseline
+      startingMileageForPreviousYear = Number(previousYearLogs[0].odometerReading);
+    }
+    
+    // Calculate total distance for previous year
+    return previousYearLogs.reduce((sum, log, index) => {
+      let distance = 0;
+      if (index === 0) {
+        distance = Number(log.odometerReading) - startingMileageForPreviousYear;
+      } else {
+        const prevLog = previousYearLogs[index - 1];
+        distance = Number(log.odometerReading) - Number(prevLog.odometerReading);
+      }
+      return sum + Math.max(0, distance);
+    }, 0);
+  }, [mileageLogs, isCurrentYear, currentYear, selectedVehicleId, selectedVehicle]);
+  
+  // For current year, calculate prorated estimate based on previous year or user estimate
+  // For previous years, show full year total
+  const totalMileage = useMemo(() => {
+    if (totalMileageFromAPI !== null) {
+      return totalMileageFromAPI;
+    }
+    
+    if (isCurrentYear) {
+      // Calculate days elapsed in the current year
+      const yearStart = new Date(currentYear, 0, 1); // January 1st
+      const todayDate = new Date(today);
+      const daysElapsed = Math.floor((todayDate.getTime() - yearStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      
+      // Calculate total days in the year (accounting for leap years)
+      const isLeapYear = (year: number) => (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+      const totalDaysInYear = isLeapYear(currentYear) ? 366 : 365;
+      
+      // Use previous year's total mileage if available, otherwise use vehicle's estimated annual mileage
+      let baseYearlyMileage: number | null = null;
+      
+      if (previousYearTotalMileage !== null && previousYearTotalMileage > 0) {
+        baseYearlyMileage = previousYearTotalMileage;
+      } else if (selectedVehicle?.totalAnnualMileage) {
+        baseYearlyMileage = parseFloat(selectedVehicle.totalAnnualMileage.toString());
+      }
+      
+      // Prorate the yearly estimate based on days elapsed
+      if (baseYearlyMileage !== null && baseYearlyMileage > 0 && daysElapsed > 0) {
+        return (baseYearlyMileage / totalDaysInYear) * daysElapsed;
+      }
+      
+      // Fallback: calculate from actual logs up to today
+      const logsUpToToday = sortedLogs.filter((log) => log.date <= today);
+      return logsUpToToday.reduce((sum, log) => sum + (log.distance || 0), 0);
+    }
+    
+    // For previous years, show full year total
+    return sortedLogs.reduce((sum, log) => sum + (log.distance || 0), 0);
+  }, [totalMileageFromAPI, sortedLogs, isCurrentYear, today, currentYear, previousYearTotalMileage, selectedVehicle]);
+  
   const isEstimate = totalMileageFromAPI !== null ? isEstimateFromAPI : isCurrentYear;
   const businessMileage = sortedLogs
     .filter((log) => log.isBusinessUse)
