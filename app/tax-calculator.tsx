@@ -646,12 +646,14 @@ const styles = StyleSheet.create({
   },
   headerText: {
     flex: 1,
+    flexShrink: 1,
   },
   title: {
     fontSize: 24,
     fontWeight: '600',
     marginBottom: 4,
     color: '#11181C',
+    flexShrink: 1,
   },
   titleDark: {
     color: '#ECEDEE',
@@ -659,6 +661,8 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     color: '#666',
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   subtitleDark: {
     color: '#9BA1A6',
@@ -758,6 +762,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     fontWeight: '500',
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   statCardTitleDark: {
     color: '#9BA1A6',
@@ -767,6 +773,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontFamily: 'monospace',
     color: '#11181C',
+    flexShrink: 1,
   },
   statCardValueDark: {
     color: '#ECEDEE',
@@ -808,6 +815,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 4,
     color: '#11181C',
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   cardTitleDark: {
     color: '#ECEDEE',
@@ -815,6 +824,8 @@ const styles = StyleSheet.create({
   cardDescription: {
     fontSize: 14,
     color: '#666',
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   cardDescriptionDark: {
     color: '#9BA1A6',
@@ -826,6 +837,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     marginBottom: 8,
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   inputLabelDark: {
     color: '#9BA1A6',
@@ -911,6 +924,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 2,
     color: '#11181C',
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   taxCardTitleDark: {
     color: '#ECEDEE',
@@ -918,6 +933,8 @@ const styles = StyleSheet.create({
   taxCardSubtitle: {
     fontSize: 12,
     color: '#666',
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   taxCardSubtitleDark: {
     color: '#9BA1A6',
@@ -926,11 +943,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
   },
   taxCardLabel: {
     fontSize: 14,
     fontWeight: '500',
     color: '#11181C',
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    flex: 1,
   },
   taxCardLabelDark: {
     color: '#ECEDEE',
@@ -940,6 +961,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontFamily: 'monospace',
     color: '#11181C',
+    flexShrink: 0,
+    marginLeft: 8,
   },
   taxCardValueDark: {
     color: '#ECEDEE',
@@ -955,6 +978,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginBottom: 4,
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   rateLabelDark: {
     color: '#9BA1A6',
@@ -965,6 +990,7 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
     marginBottom: 4,
     color: '#11181C',
+    flexShrink: 1,
   },
   rateValueDark: {
     color: '#ECEDEE',
@@ -972,6 +998,8 @@ const styles = StyleSheet.create({
   rateHelper: {
     fontSize: 12,
     color: '#666',
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   rateHelperDark: {
     color: '#9BA1A6',
@@ -988,10 +1016,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
   },
   cppInfoLabel: {
     fontSize: 14,
     color: '#666',
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    flex: 1,
   },
   cppInfoLabelDark: {
     color: '#9BA1A6',
@@ -1001,6 +1033,8 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     fontFamily: 'monospace',
     color: '#11181C',
+    flexShrink: 0,
+    marginLeft: 8,
   },
   cppInfoValueDark: {
     color: '#ECEDEE',
@@ -1020,6 +1054,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginBottom: 8,
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    textAlign: 'center',
   },
   cppContributionLabelDark: {
     color: '#9BA1A6',
@@ -1029,6 +1066,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontFamily: 'monospace',
     color: '#11181C',
+    flexShrink: 1,
   },
   cppContributionValueDark: {
     color: '#ECEDEE',
@@ -1059,6 +1097,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 4,
     color: '#dc2626',
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   totalCardTitleDark: {
     color: '#fca5a5',
@@ -1066,6 +1106,8 @@ const styles = StyleSheet.create({
   totalCardDescription: {
     fontSize: 14,
     color: '#991b1b',
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   totalCardDescriptionDark: {
     color: '#fca5a5',
@@ -1080,10 +1122,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
   },
   totalLabel: {
     fontSize: 14,
     color: '#991b1b',
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    flex: 1,
   },
   totalLabelDark: {
     color: '#fca5a5',
@@ -1099,6 +1145,8 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     fontFamily: 'monospace',
     color: '#991b1b',
+    flexShrink: 0,
+    marginLeft: 8,
   },
   totalValueDark: {
     color: '#fca5a5',
@@ -1115,6 +1163,8 @@ const styles = StyleSheet.create({
     color: '#991b1b',
     textAlign: 'center',
     width: '100%',
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   totalNoteDark: {
     color: '#fca5a5',
@@ -1128,6 +1178,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#991b1b',
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    flex: 1,
   },
   totalOwedLabelDark: {
     color: '#fca5a5',
@@ -1137,6 +1190,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontFamily: 'monospace',
     color: '#dc2626',
+    flexShrink: 0,
+    marginLeft: 8,
   },
   totalOwedValueDark: {
     color: '#fca5a5',
@@ -1148,6 +1203,9 @@ const styles = StyleSheet.create({
   effectiveRateLabel: {
     fontSize: 14,
     color: '#991b1b',
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    textAlign: 'center',
   },
   effectiveRateLabelDark: {
     color: '#fca5a5',
@@ -1157,6 +1215,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontFamily: 'monospace',
     color: '#dc2626',
+    flexShrink: 1,
   },
   effectiveRateValueDark: {
     color: '#fca5a5',
@@ -1179,6 +1238,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#991b1b',
     textAlign: 'center',
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   progressHelperDark: {
     color: '#fca5a5',
