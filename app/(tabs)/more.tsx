@@ -109,8 +109,7 @@ export default function More() {
           title: 'Help & Support',
           icon: 'help-outline',
           onPress: () => {
-            // TODO: Navigate to help page when available
-            Alert.alert('Help & Support', 'Help page coming soon');
+            router.push('/help');
           },
           showChevron: true,
         },
