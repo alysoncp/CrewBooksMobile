@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { TaxYearProvider } from '@/contexts/TaxYearContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/hooks/useAuth';
+import '@/lib/network-config'; // Initialize network configuration to prefer IPv4
 
 export const unstable_settings = {
   anchor: '(tabs)',

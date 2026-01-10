@@ -1,4 +1,5 @@
 import { API_URL } from './config';
+import { preferIPv4 } from './network-config';
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -12,7 +13,8 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const fullUrl = url.startsWith('http') ? url : `${API_URL}${url}`;
+  let fullUrl = url.startsWith('http') ? url : `${API_URL}${url}`;
+  fullUrl = preferIPv4(fullUrl);
   
   if (__DEV__) {
     console.log(`API Request: ${method} ${fullUrl}`, data);
@@ -44,7 +46,8 @@ export async function apiRequest(
 }
 
 export async function apiGet<T>(url: string): Promise<T> {
-  const fullUrl = url.startsWith('http') ? url : `${API_URL}${url}`;
+  let fullUrl = url.startsWith('http') ? url : `${API_URL}${url}`;
+  fullUrl = preferIPv4(fullUrl);
   
   if (__DEV__) {
     console.log(`API GET: ${fullUrl}`);
@@ -73,7 +76,8 @@ export async function apiGet<T>(url: string): Promise<T> {
 }
 
 export async function uploadReceiptImage(uri: string): Promise<any> {
-  const fullUrl = `${API_URL}/api/receipts/upload`;
+  let fullUrl = `${API_URL}/api/receipts/upload`;
+  fullUrl = preferIPv4(fullUrl);
   
   if (__DEV__) {
     console.log(`Uploading receipt image: ${fullUrl}`);

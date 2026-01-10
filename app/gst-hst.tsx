@@ -1,3 +1,4 @@
+import { useTaxYear } from '@/contexts/TaxYearContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/hooks/useAuth';
 import { apiGet } from '@/lib/api';
@@ -29,6 +30,7 @@ export default function GstHstPage() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
+  const { taxYear } = useTaxYear();
 
   const [gstHstData, setGstHstData] = useState<GstHstSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,12 +43,12 @@ export default function GstHstPage() {
     } else {
       setIsLoading(false);
     }
-  }, [hasGstNumber]);
+  }, [hasGstNumber, taxYear]);
 
   const fetchGstHstData = async () => {
     try {
       setIsLoading(true);
-      const data = await apiGet<GstHstSummary>('/api/gst-hst');
+      const data = await apiGet<GstHstSummary>(`/api/gst-hst?taxYear=${taxYear}`);
       setGstHstData(data);
     } catch (error: any) {
       console.error('Error fetching GST/HST data:', error);
@@ -225,7 +227,7 @@ export default function GstHstPage() {
                 GST/HST Summary
               </Text>
               <Text style={[styles.cardDescription, isDark && styles.cardDescriptionDark]}>
-                Overview of your sales tax obligations for the current year
+                Overview of your sales tax obligations for {taxYear}
               </Text>
             </View>
 
