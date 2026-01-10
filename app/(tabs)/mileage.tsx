@@ -1,7 +1,7 @@
 import { useTaxYear } from '@/contexts/TaxYearContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { apiGet, apiRequest } from '@/lib/api';
-import { formatDate, getTodayLocalDateString } from '@/lib/format';
+import { formatDate, getTodayLocalDateString, getYearFromDateString } from '@/lib/format';
 import { type Vehicle, type VehicleMileageLog } from '@/lib/types';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useEffect, useMemo, useState } from 'react';
@@ -45,6 +45,9 @@ export default function VehicleMileagePage() {
   const [showVehiclePicker, setShowVehiclePicker] = useState(false);
   const [mileageLoggingStyle, setMileageLoggingStyle] = useState<'trip_distance' | 'odometer'>('trip_distance');
   const [showYearPicker, setShowYearPicker] = useState(false);
+  const [businessUsePercentage, setBusinessUsePercentage] = useState<number | null>(null);
+  const [totalMileageFromAPI, setTotalMileageFromAPI] = useState<number | null>(null);
+  const [isEstimateFromAPI, setIsEstimateFromAPI] = useState<boolean>(false);
 
   const [formData, setFormData] = useState<MileageLogFormData>({
     date: getTodayLocalDateString(),
@@ -61,8 +64,9 @@ export default function VehicleMileagePage() {
   useEffect(() => {
     if (selectedVehicleId) {
       fetchMileageLogs();
+      fetchBusinessUsePercentage();
     }
-  }, [selectedVehicleId]);
+  }, [selectedVehicleId, taxYear]);
 
   // Auto-select first vehicle
   useEffect(() => {
@@ -106,12 +110,29 @@ export default function VehicleMileagePage() {
     }
   };
 
+  const fetchBusinessUsePercentage = async () => {
+    if (!selectedVehicleId) return;
+    try {
+      const response = await apiGet<{ businessUsePercentage: number; totalMileage?: number; isEstimate?: boolean }>(`/api/vehicles/${selectedVehicleId}/business-use-percentage?taxYear=${taxYear}`);
+      setBusinessUsePercentage(response.businessUsePercentage || null);
+      setTotalMileageFromAPI(response.totalMileage ?? null);
+      setIsEstimateFromAPI(response.isEstimate ?? false);
+    } catch (error) {
+      console.error('Error fetching business use percentage:', error);
+      setBusinessUsePercentage(null);
+      setTotalMileageFromAPI(null);
+      setIsEstimateFromAPI(false);
+    }
+  };
+
   const selectedVehicle = vehicles.find((v) => v.id === selectedVehicleId);
   const isOdometerStyle = mileageLoggingStyle === 'odometer';
 
   // Calculate distances and totals
   const sortedLogs = useMemo(() => {
-    const sorted = [...mileageLogs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const sorted = [...mileageLogs]
+      .filter((log) => getYearFromDateString(log.date) === taxYear)
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     return sorted.map((log, index) => {
       let distance = 0;
       if (index === 0) {
@@ -123,7 +144,7 @@ export default function VehicleMileagePage() {
       }
       return { ...log, distance: Math.max(0, distance) };
     });
-  }, [mileageLogs, selectedVehicle]);
+  }, [mileageLogs, selectedVehicle, taxYear]);
 
   const filteredLogs = useMemo(() => {
     return sortedLogs
@@ -137,7 +158,12 @@ export default function VehicleMileagePage() {
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [sortedLogs, searchQuery]);
 
-  const totalMileage = sortedLogs.reduce((sum, log) => sum + (log.distance || 0), 0);
+  const currentYear = new Date().getFullYear();
+  const isCurrentYear = Number(taxYear) === currentYear;
+  
+  // Use total mileage from API (used for business percentage calculation) if available, otherwise calculate from logs
+  const totalMileage = totalMileageFromAPI !== null ? totalMileageFromAPI : sortedLogs.reduce((sum, log) => sum + (log.distance || 0), 0);
+  const isEstimate = totalMileageFromAPI !== null ? isEstimateFromAPI : isCurrentYear;
   const businessMileage = sortedLogs
     .filter((log) => log.isBusinessUse)
     .reduce((sum, log) => sum + (log.distance || 0), 0);
@@ -274,27 +300,25 @@ export default function VehicleMileagePage() {
               {item.isBusinessUse ? 'Business' : 'Personal'}
             </Text>
           </View>
-        </View>
-      </View>
-      <View style={[styles.mileageCardFooter, isDark && styles.mileageCardFooterDark]}>
-        <View style={styles.mileageCardActions}>
-          <TouchableOpacity
-            onPress={() => handleEdit(item)}
-            style={styles.mileageActionButton}
-          >
-            <MaterialIcons name="edit" size={20} color={isDark ? '#9BA1A6' : '#666'} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => handleDelete(item.id)}
-            disabled={deleteId === item.id}
-            style={styles.mileageActionButton}
-          >
-            {deleteId === item.id ? (
-              <ActivityIndicator size="small" color="#ef4444" />
-            ) : (
-              <MaterialIcons name="delete" size={20} color={isDark ? '#9BA1A6' : '#666'} />
-            )}
-          </TouchableOpacity>
+          <View style={styles.mileageCardActions}>
+            <TouchableOpacity
+              onPress={() => handleEdit(item)}
+              style={styles.mileageActionButton}
+            >
+              <MaterialIcons name="edit" size={20} color={isDark ? '#9BA1A6' : '#666'} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => handleDelete(item.id)}
+              disabled={deleteId === item.id}
+              style={styles.mileageActionButton}
+            >
+              {deleteId === item.id ? (
+                <ActivityIndicator size="small" color="#ef4444" />
+              ) : (
+                <MaterialIcons name="delete" size={20} color={isDark ? '#9BA1A6' : '#666'} />
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </View>
@@ -347,7 +371,9 @@ export default function VehicleMileagePage() {
           {/* Stats */}
           <View style={styles.statsGrid}>
             <View style={[styles.statCard, isDark && styles.statCardDark]}>
-              <Text style={[styles.statCardTitle, isDark && styles.statCardTitleDark]}>Total Mileage</Text>
+              <Text style={[styles.statCardTitle, isDark && styles.statCardTitleDark]}>
+                Total Mileage{isEstimate ? ' (Estimate)' : ''}
+              </Text>
               <Text style={[styles.statCardValue, isDark && styles.statCardValueDark]}>
                 {totalMileage.toLocaleString()} km
               </Text>
@@ -821,7 +847,7 @@ const styles = StyleSheet.create({
   mileageCard: {
     backgroundColor: '#fff',
     borderRadius: 8,
-    padding: 16,
+    padding: 12,
     marginHorizontal: 16,
     marginBottom: 12,
     borderWidth: 1,
@@ -840,22 +866,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   mileageCardHeaderLeft: {
     flex: 1,
   },
   mileageCardTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: 3,
     color: '#11181C',
   },
   mileageCardTitleDark: {
     color: '#ECEDEE',
   },
   mileageCardDate: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#666',
   },
   mileageCardDateDark: {
@@ -864,14 +890,15 @@ const styles = StyleSheet.create({
   mileageCardDistance: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#11181C',
+    color: '#fff',
   },
   mileageCardBody: {
-    marginBottom: 12,
+    marginBottom: 8,
   },
   mileageCardRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 8,
   },
   badge: {
@@ -897,14 +924,14 @@ const styles = StyleSheet.create({
   mileageCardFooter: {
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
-    paddingTop: 12,
+    paddingTop: 8,
   },
   mileageCardFooterDark: {
     borderTopColor: '#374151',
   },
   mileageCardActions: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    alignItems: 'center',
     gap: 8,
   },
   mileageActionButton: {
