@@ -56,8 +56,11 @@ export default function ExpenseSettingsPage() {
       setExpenseList(expenses);
 
       // Initialize home office percentage
-      if (userData?.homeOfficePercentage) {
-        setHomeOfficePercentage(parseFloat(userData.homeOfficePercentage.toString()).toString());
+      if (userData?.homeOfficePercentage !== null && userData?.homeOfficePercentage !== undefined) {
+        const percentageValue = parseFloat(userData.homeOfficePercentage.toString());
+        setHomeOfficePercentage(percentageValue.toString());
+      } else {
+        setHomeOfficePercentage('');
       }
 
       // Initialize categories
@@ -117,6 +120,15 @@ export default function ExpenseSettingsPage() {
       await apiRequest('PATCH', '/api/user/profile', {
         homeOfficePercentage: percentage,
       });
+      // Refresh user data to get updated value
+      const userData = await apiGet<User>('/api/user/profile');
+      setUser(userData);
+      // Update the displayed value
+      if (userData?.homeOfficePercentage) {
+        setHomeOfficePercentage(parseFloat(userData.homeOfficePercentage.toString()).toString());
+      } else {
+        setHomeOfficePercentage('');
+      }
       Alert.alert('Success', 'Home office percentage updated');
     } catch (error) {
       console.error('Error updating home office percentage:', error);
@@ -286,7 +298,7 @@ export default function ExpenseSettingsPage() {
           <Text style={[styles.sectionDescription, isDark && styles.sectionDescriptionDark]}>
             Enter the percentage of your home used for business purposes:
           </Text>
-          <View style={styles.percentageContainer}>
+          <View style={[styles.percentageContainer, isDark && styles.percentageContainerDark]}>
             <TextInput
               style={[styles.percentageInput, isDark && styles.percentageInputDark]}
               placeholder="0.00"
@@ -831,23 +843,28 @@ const styles = StyleSheet.create({
     elevation: 1,
     marginBottom: 12,
   },
+  percentageContainerDark: {
+    backgroundColor: '#1f2937',
+    borderColor: '#4b5563',
+  },
   percentageInput: {
     flex: 1,
     paddingVertical: 0,
     fontSize: 16,
-    color: '#11181C',
+    color: '#000000',
+    fontWeight: '500',
   },
   percentageInputDark: {
-    color: '#ECEDEE',
+    color: '#FFFFFF',
   },
   percentageSymbol: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#666',
+    color: '#11181C',
     paddingLeft: 8,
   },
   percentageSymbolDark: {
-    color: '#9BA1A6',
+    color: '#ECEDEE',
   },
   saveButton: {
     backgroundColor: '#0a7ea4',

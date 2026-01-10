@@ -468,6 +468,17 @@ export default function Expenses() {
     return sum + gstAmount;
   }, 0);
 
+  // Filter categories based on user's enabled categories
+  const enabledCategories = useMemo(() => {
+    if (!user?.enabledExpenseCategories || user.enabledExpenseCategories.length === 0) {
+      // If no enabled categories are set, show all categories
+      return EXPENSE_CATEGORIES;
+    }
+    return EXPENSE_CATEGORIES.filter((category) => 
+      user.enabledExpenseCategories?.includes(category)
+    );
+  }, [user?.enabledExpenseCategories]);
+
   const handleSubmit = async () => {
     if (!formData.category) {
       Alert.alert('Error', 'Please select a category');
@@ -1085,11 +1096,12 @@ export default function Expenses() {
               <TouchableOpacity
                 style={[styles.filterSelectButton, isDark && styles.filterSelectButtonDark]}
                 onPress={() => setShowFilterCategoryPicker(true)}
+                activeOpacity={0.7}
               >
-                <Text style={[styles.filterSelectText, isDark && styles.filterSelectTextDark]}>
+                <Text style={[styles.filterSelectText, isDark && styles.filterSelectTextDark]} pointerEvents="none">
                   {selectedCategory ? getCategoryLabel(selectedCategory) : 'All Categories'}
                 </Text>
-                <MaterialIcons name="arrow-drop-down" size={20} color={isDark ? '#9BA1A6' : '#666'} />
+                <MaterialIcons name="arrow-drop-down" size={20} color={isDark ? '#9BA1A6' : '#666'} pointerEvents="none" />
               </TouchableOpacity>
             </View>
 
@@ -1441,7 +1453,7 @@ export default function Expenses() {
           >
             <View style={[styles.pickerModal, isDark && styles.pickerModalDark]}>
               <ScrollView>
-                {EXPENSE_CATEGORIES.map((category) => (
+                {enabledCategories.map((category) => (
                   <TouchableOpacity
                     key={category}
                     style={styles.pickerOption}
@@ -1533,20 +1545,29 @@ export default function Expenses() {
             </View>
           </TouchableOpacity>
         </Modal>
+      </Modal>
+      </ScrollView>
+      <TouchableOpacity
+        style={[styles.fabButton, { bottom: insets.bottom + 16, right: 24 }]}
+        onPress={handleAddPress}
+        activeOpacity={0.8}
+      >
+        <MaterialIcons name="add" size={32} color="#fff" />
+      </TouchableOpacity>
 
-        {/* Filter Category Picker Modal */}
-        <Modal
-          visible={showFilterCategoryPicker}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowFilterCategoryPicker(false)}
+      {/* Filter Category Picker Modal */}
+      <Modal
+        visible={showFilterCategoryPicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowFilterCategoryPicker(false)}
+      >
+        <TouchableOpacity
+          style={styles.pickerOverlay}
+          activeOpacity={1}
+          onPress={() => setShowFilterCategoryPicker(false)}
         >
-          <TouchableOpacity
-            style={styles.pickerOverlay}
-            activeOpacity={1}
-            onPress={() => setShowFilterCategoryPicker(false)}
-          >
-            <View style={[styles.pickerModal, isDark && styles.pickerModalDark]}>
+          <View style={[styles.pickerModal, isDark && styles.pickerModalDark]}>
               <ScrollView>
                 <TouchableOpacity
                   style={styles.pickerOption}
@@ -1559,7 +1580,7 @@ export default function Expenses() {
                     All Categories
                   </Text>
                 </TouchableOpacity>
-                {EXPENSE_CATEGORIES.map((category) => (
+                {enabledCategories.map((category) => (
                   <TouchableOpacity
                     key={category}
                     style={styles.pickerOption}
@@ -1574,18 +1595,9 @@ export default function Expenses() {
                   </TouchableOpacity>
                 ))}
               </ScrollView>
-            </View>
-          </TouchableOpacity>
-        </Modal>
+          </View>
+        </TouchableOpacity>
       </Modal>
-      </ScrollView>
-      <TouchableOpacity
-        style={[styles.fabButton, { bottom: insets.bottom + 16, right: 24 }]}
-        onPress={handleAddPress}
-        activeOpacity={0.8}
-      >
-        <MaterialIcons name="add" size={32} color="#fff" />
-      </TouchableOpacity>
 
       {/* Tax Year Picker Modal */}
       <Modal

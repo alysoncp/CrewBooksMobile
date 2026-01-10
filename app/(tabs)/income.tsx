@@ -782,11 +782,12 @@ export default function Income() {
               <TouchableOpacity
                 style={[styles.filterSelectButton, isDark && styles.filterSelectButtonDark]}
                 onPress={() => setShowFilterIncomeTypePicker(true)}
+                activeOpacity={0.7}
               >
-                <Text style={[styles.filterSelectText, isDark && styles.filterSelectTextDark]}>
+                <Text style={[styles.filterSelectText, isDark && styles.filterSelectTextDark]} pointerEvents="none">
                   {selectedIncomeType ? getIncomeTypeLabel(selectedIncomeType) : 'All Types'}
                 </Text>
-                <MaterialIcons name="arrow-drop-down" size={20} color={isDark ? '#9BA1A6' : '#666'} />
+                <MaterialIcons name="arrow-drop-down" size={20} color={isDark ? '#9BA1A6' : '#666'} pointerEvents="none" />
               </TouchableOpacity>
             </View>
 
@@ -795,11 +796,12 @@ export default function Income() {
               <TouchableOpacity
                 style={[styles.filterSelectButton, isDark && styles.filterSelectButtonDark]}
                 onPress={() => setShowFilterAccountingOfficePicker(true)}
+                activeOpacity={0.7}
               >
-                <Text style={[styles.filterSelectText, isDark && styles.filterSelectTextDark]}>
+                <Text style={[styles.filterSelectText, isDark && styles.filterSelectTextDark]} pointerEvents="none">
                   {selectedAccountingOffice === 'other' ? 'Other' : selectedAccountingOffice ? ACCOUNTING_OFFICES.find((o) => o.value === selectedAccountingOffice)?.label || selectedAccountingOffice : 'All Offices'}
                 </Text>
-                <MaterialIcons name="arrow-drop-down" size={20} color={isDark ? '#9BA1A6' : '#666'} />
+                <MaterialIcons name="arrow-drop-down" size={20} color={isDark ? '#9BA1A6' : '#666'} pointerEvents="none" />
               </TouchableOpacity>
             </View>
 
@@ -1171,105 +1173,6 @@ export default function Income() {
             </View>
           </TouchableOpacity>
         </Modal>
-
-        {/* Filter Income Type Picker Modal */}
-        <Modal
-          visible={showFilterIncomeTypePicker}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowFilterIncomeTypePicker(false)}
-        >
-          <TouchableOpacity
-            style={styles.pickerOverlay}
-            activeOpacity={1}
-            onPress={() => setShowFilterIncomeTypePicker(false)}
-          >
-            <View style={[styles.pickerModal, isDark && styles.pickerModalDark]}>
-              <ScrollView>
-                <TouchableOpacity
-                  style={styles.pickerOption}
-                  onPress={() => {
-                    setSelectedIncomeType(null);
-                    setShowFilterIncomeTypePicker(false);
-                  }}
-                >
-                  <Text style={[styles.pickerOptionText, isDark && styles.pickerOptionTextDark, !selectedIncomeType && styles.pickerOptionTextSelected]}>
-                    All Types
-                  </Text>
-                </TouchableOpacity>
-                {INCOME_TYPES.map((type) => (
-                  <TouchableOpacity
-                    key={type}
-                    style={styles.pickerOption}
-                    onPress={() => {
-                      setSelectedIncomeType(type);
-                      setShowFilterIncomeTypePicker(false);
-                    }}
-                  >
-                    <Text style={[styles.pickerOptionText, isDark && styles.pickerOptionTextDark, selectedIncomeType === type && styles.pickerOptionTextSelected]}>
-                      {getIncomeTypeLabel(type)}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          </TouchableOpacity>
-        </Modal>
-
-        {/* Filter Accounting Office Picker Modal */}
-        <Modal
-          visible={showFilterAccountingOfficePicker}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowFilterAccountingOfficePicker(false)}
-        >
-          <TouchableOpacity
-            style={styles.pickerOverlay}
-            activeOpacity={1}
-            onPress={() => setShowFilterAccountingOfficePicker(false)}
-          >
-            <View style={[styles.pickerModal, isDark && styles.pickerModalDark]}>
-              <ScrollView>
-                <TouchableOpacity
-                  style={styles.pickerOption}
-                  onPress={() => {
-                    setSelectedAccountingOffice(null);
-                    setShowFilterAccountingOfficePicker(false);
-                  }}
-                >
-                  <Text style={[styles.pickerOptionText, isDark && styles.pickerOptionTextDark, !selectedAccountingOffice && styles.pickerOptionTextSelected]}>
-                    All Offices
-                  </Text>
-                </TouchableOpacity>
-                {ACCOUNTING_OFFICES.map((office) => (
-                  <TouchableOpacity
-                    key={office.value}
-                    style={styles.pickerOption}
-                    onPress={() => {
-                      setSelectedAccountingOffice(office.value);
-                      setShowFilterAccountingOfficePicker(false);
-                    }}
-                  >
-                    <Text style={[styles.pickerOptionText, isDark && styles.pickerOptionTextDark, selectedAccountingOffice === office.value && styles.pickerOptionTextSelected]}>
-                      {office.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-                <TouchableOpacity
-                  style={styles.pickerOption}
-                  onPress={() => {
-                    setSelectedAccountingOffice('other');
-                    setShowFilterAccountingOfficePicker(false);
-                  }}
-                >
-                  <Text style={[styles.pickerOptionText, isDark && styles.pickerOptionTextDark, selectedAccountingOffice === 'other' && styles.pickerOptionTextSelected]}>
-                    Other
-                  </Text>
-                </TouchableOpacity>
-              </ScrollView>
-            </View>
-          </TouchableOpacity>
-        </Modal>
       </Modal>
       </ScrollView>
       <TouchableOpacity
@@ -1279,6 +1182,105 @@ export default function Income() {
       >
         <MaterialIcons name="add" size={32} color="#fff" />
       </TouchableOpacity>
+
+      {/* Filter Income Type Picker Modal */}
+      <Modal
+        visible={showFilterIncomeTypePicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowFilterIncomeTypePicker(false)}
+      >
+        <TouchableOpacity
+          style={styles.pickerOverlay}
+          activeOpacity={1}
+          onPress={() => setShowFilterIncomeTypePicker(false)}
+        >
+          <View style={[styles.pickerModal, isDark && styles.pickerModalDark]}>
+            <ScrollView>
+              <TouchableOpacity
+                style={styles.pickerOption}
+                onPress={() => {
+                  setSelectedIncomeType(null);
+                  setShowFilterIncomeTypePicker(false);
+                }}
+              >
+                <Text style={[styles.pickerOptionText, isDark && styles.pickerOptionTextDark, !selectedIncomeType && styles.pickerOptionTextSelected]}>
+                  All Types
+                </Text>
+              </TouchableOpacity>
+              {INCOME_TYPES.map((type) => (
+                <TouchableOpacity
+                  key={type}
+                  style={styles.pickerOption}
+                  onPress={() => {
+                    setSelectedIncomeType(type);
+                    setShowFilterIncomeTypePicker(false);
+                  }}
+                >
+                  <Text style={[styles.pickerOptionText, isDark && styles.pickerOptionTextDark, selectedIncomeType === type && styles.pickerOptionTextSelected]}>
+                    {getIncomeTypeLabel(type)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Filter Accounting Office Picker Modal */}
+      <Modal
+        visible={showFilterAccountingOfficePicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowFilterAccountingOfficePicker(false)}
+      >
+        <TouchableOpacity
+          style={styles.pickerOverlay}
+          activeOpacity={1}
+          onPress={() => setShowFilterAccountingOfficePicker(false)}
+        >
+          <View style={[styles.pickerModal, isDark && styles.pickerModalDark]}>
+            <ScrollView>
+              <TouchableOpacity
+                style={styles.pickerOption}
+                onPress={() => {
+                  setSelectedAccountingOffice(null);
+                  setShowFilterAccountingOfficePicker(false);
+                }}
+              >
+                <Text style={[styles.pickerOptionText, isDark && styles.pickerOptionTextDark, !selectedAccountingOffice && styles.pickerOptionTextSelected]}>
+                  All Offices
+                </Text>
+              </TouchableOpacity>
+              {ACCOUNTING_OFFICES.map((office) => (
+                <TouchableOpacity
+                  key={office.value}
+                  style={styles.pickerOption}
+                  onPress={() => {
+                    setSelectedAccountingOffice(office.value);
+                    setShowFilterAccountingOfficePicker(false);
+                  }}
+                >
+                  <Text style={[styles.pickerOptionText, isDark && styles.pickerOptionTextDark, selectedAccountingOffice === office.value && styles.pickerOptionTextSelected]}>
+                    {office.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity
+                style={styles.pickerOption}
+                onPress={() => {
+                  setSelectedAccountingOffice('other');
+                  setShowFilterAccountingOfficePicker(false);
+                }}
+              >
+                <Text style={[styles.pickerOptionText, isDark && styles.pickerOptionTextDark, selectedAccountingOffice === 'other' && styles.pickerOptionTextSelected]}>
+                  Other
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Tax Year Picker Modal */}
       <Modal
