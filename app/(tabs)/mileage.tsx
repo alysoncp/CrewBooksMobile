@@ -6,17 +6,17 @@ import { type Vehicle, type VehicleMileageLog } from '@/lib/types';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useEffect, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -31,7 +31,7 @@ export default function VehicleMileagePage() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
-  const { taxYear } = useTaxYear();
+  const { taxYear, setTaxYear } = useTaxYear();
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
@@ -44,6 +44,7 @@ export default function VehicleMileagePage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showVehiclePicker, setShowVehiclePicker] = useState(false);
   const [mileageLoggingStyle, setMileageLoggingStyle] = useState<'trip_distance' | 'odometer'>('trip_distance');
+  const [showYearPicker, setShowYearPicker] = useState(false);
 
   const [formData, setFormData] = useState<MileageLogFormData>({
     date: getTodayLocalDateString(),
@@ -300,18 +301,28 @@ export default function VehicleMileagePage() {
   );
 
   return (
-    <ScrollView
-      style={[styles.container, isDark && styles.containerDark]}
-      contentContainerStyle={[styles.contentContainer, { paddingTop: insets.top + 8 }]}
-    >
+    <View style={[styles.container, isDark && styles.containerDark]}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[styles.contentContainer, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 80 }]}
+      >
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <View style={styles.headerText}>
-            <Text style={[styles.title, isDark && styles.titleDark]}>Vehicle Mileage</Text>
-            <Text style={[styles.subtitle, isDark && styles.subtitleDark]}>
-              Track mileage for your vehicles
-            </Text>
+        <View style={styles.headerTop}>
+          <View style={styles.headerLeft}>
+            <View style={styles.headerText}>
+              <Text style={[styles.title, isDark && styles.titleDark]}>Vehicle Mileage</Text>
+            </View>
           </View>
+          <TouchableOpacity
+            style={[styles.taxYearPicker, isDark && styles.taxYearPickerDark]}
+            onPress={() => setShowYearPicker(true)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.taxYearValue, isDark && styles.taxYearValueDark]}>
+              {taxYear}
+            </Text>
+            <MaterialIcons name="arrow-drop-down" size={20} color={isDark ? '#9BA1A6' : '#666'} />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -360,16 +371,6 @@ export default function VehicleMileagePage() {
                   All recorded mileage entries for this vehicle
                 </Text>
               </View>
-              <TouchableOpacity
-                style={styles.fabButton}
-                onPress={() => {
-                  resetFormData();
-                  setIsModalOpen(true);
-                }}
-                activeOpacity={0.8}
-              >
-                <MaterialIcons name="add" size={28} color="#fff" />
-              </TouchableOpacity>
             </View>
             <View style={[styles.searchContainer, isDark && styles.searchContainerDark]}>
               <MaterialIcons name="search" size={18} color={isDark ? '#9BA1A6' : '#666'} style={styles.searchIcon} />
@@ -561,7 +562,63 @@ export default function VehicleMileagePage() {
           </View>
         </View>
       </Modal>
-    </ScrollView>
+
+      {/* Tax Year Picker Modal */}
+      <Modal
+        visible={showYearPicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowYearPicker(false)}
+      >
+        <TouchableOpacity
+          style={styles.pickerOverlay}
+          activeOpacity={1}
+          onPress={() => setShowYearPicker(false)}
+        >
+          <View style={[styles.pickerModal, isDark && styles.pickerModalDark]}>
+            <ScrollView>
+              {Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i).map((year) => (
+                <TouchableOpacity
+                  key={year}
+                  style={[
+                    styles.pickerOption,
+                    year === taxYear && styles.pickerOptionSelected,
+                  ]}
+                  onPress={() => {
+                    setTaxYear(year);
+                    setShowYearPicker(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.pickerOptionText,
+                      isDark && styles.pickerOptionTextDark,
+                      year === taxYear && styles.pickerOptionTextSelected,
+                    ]}
+                  >
+                    {year}
+                  </Text>
+                  {year === taxYear && (
+                    <MaterialIcons name="check" size={24} color={isDark ? '#0a7ea4' : '#0a7ea4'} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+      </ScrollView>
+      <TouchableOpacity
+        style={[styles.fabButton, { bottom: insets.bottom + 16, right: 24 }]}
+        onPress={() => {
+          resetFormData();
+          setIsModalOpen(true);
+        }}
+        activeOpacity={0.8}
+      >
+        <MaterialIcons name="add" size={32} color="#fff" />
+      </TouchableOpacity>
+    </View>
   );
 }
 
@@ -573,16 +630,27 @@ const styles = StyleSheet.create({
   containerDark: {
     backgroundColor: '#151718',
   },
+  scrollView: {
+    flex: 1,
+  },
   contentContainer: {
-    padding: 16,
     paddingBottom: 32,
   },
   header: {
-    marginBottom: 24,
+    padding: 16,
+    paddingBottom: 24,
+    marginBottom: 0,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   backButton: {
     marginRight: 12,
@@ -594,7 +662,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: 0,
     color: '#11181C',
   },
   titleDark: {
@@ -611,6 +679,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 8,
     padding: 16,
+    marginHorizontal: 16,
     marginBottom: 16,
     borderWidth: 1,
     borderColor: '#e5e7eb',
@@ -678,6 +747,7 @@ const styles = StyleSheet.create({
   },
   statsGrid: {
     flexDirection: 'row',
+    paddingHorizontal: 16,
     gap: 12,
     marginBottom: 16,
   },
@@ -752,6 +822,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 8,
     padding: 16,
+    marginHorizontal: 16,
     marginBottom: 12,
     borderWidth: 1,
     borderColor: '#e5e7eb',
@@ -868,17 +939,21 @@ const styles = StyleSheet.create({
     color: '#9BA1A6',
   },
   fabButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    position: 'absolute',
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: '#0a7ea4',
+    borderWidth: 3,
+    borderColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 12,
+    zIndex: 1000,
   },
   pickerOverlay: {
     flex: 1,
@@ -1090,6 +1165,30 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
+  },
+  taxYearPicker: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#f9fafb',
+    minWidth: 100,
+  },
+  taxYearPickerDark: {
+    backgroundColor: '#374151',
+    borderColor: '#4b5563',
+  },
+  taxYearValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#11181C',
+  },
+  taxYearValueDark: {
+    color: '#ECEDEE',
   },
 });
 

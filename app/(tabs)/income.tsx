@@ -57,7 +57,7 @@ export default function Income() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useAuth();
-  const { taxYear } = useTaxYear();
+  const { taxYear, setTaxYear } = useTaxYear();
   const hasGstNumber = user?.hasGstNumber === true;
 
   const [incomeList, setIncomeList] = useState<Income[]>([]);
@@ -82,6 +82,7 @@ export default function Income() {
   const [dateTo, setDateTo] = useState<string>('');
   const [showFilterIncomeTypePicker, setShowFilterIncomeTypePicker] = useState(false);
   const [showFilterAccountingOfficePicker, setShowFilterAccountingOfficePicker] = useState(false);
+  const [showYearPicker, setShowYearPicker] = useState(false);
 
   const [formData, setFormData] = useState<IncomeFormData>({
     amount: '',
@@ -589,19 +590,25 @@ export default function Income() {
   }, [paystubs, isDark, router, handleEdit, handleDelete, deleteId]);
 
   return (
-    <ScrollView style={[styles.container, isDark && styles.containerDark]} contentContainerStyle={[styles.contentContainer, { paddingTop: insets.top + 8 }]}>
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Text style={[styles.title, isDark && styles.titleDark]}>Income</Text>
+    <View style={[styles.container, isDark && styles.containerDark]}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={[styles.contentContainer, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 80 }]}>
+        <View style={styles.header}>
+          <View style={styles.headerTop}>
+            <View style={styles.headerLeft}>
+              <Text style={[styles.title, isDark && styles.titleDark]}>Income</Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.taxYearPicker, isDark && styles.taxYearPickerDark]}
+              onPress={() => setShowYearPicker(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.taxYearValue, isDark && styles.taxYearValueDark]}>
+                {taxYear}
+              </Text>
+              <MaterialIcons name="arrow-drop-down" size={20} color={isDark ? '#9BA1A6' : '#666'} />
+            </TouchableOpacity>
+          </View>
         </View>
-        <TouchableOpacity
-          style={styles.fabButton}
-          onPress={handleAddPress}
-          activeOpacity={0.8}
-        >
-          <MaterialIcons name="add" size={28} color="#fff" />
-        </TouchableOpacity>
-      </View>
 
       <View style={styles.statsGrid}>
         <View style={[styles.statCard, isDark && styles.statCardDark]}>
@@ -1264,7 +1271,60 @@ export default function Income() {
           </TouchableOpacity>
         </Modal>
       </Modal>
-    </ScrollView>
+      </ScrollView>
+      <TouchableOpacity
+        style={[styles.fabButton, { bottom: insets.bottom + 16, right: 24 }]}
+        onPress={handleAddPress}
+        activeOpacity={0.8}
+      >
+        <MaterialIcons name="add" size={32} color="#fff" />
+      </TouchableOpacity>
+
+      {/* Tax Year Picker Modal */}
+      <Modal
+        visible={showYearPicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowYearPicker(false)}
+      >
+        <TouchableOpacity
+          style={styles.pickerOverlay}
+          activeOpacity={1}
+          onPress={() => setShowYearPicker(false)}
+        >
+          <View style={[styles.pickerModal, isDark && styles.pickerModalDark]}>
+            <ScrollView>
+              {Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i).map((year) => (
+                <TouchableOpacity
+                  key={year}
+                  style={[
+                    styles.pickerOption,
+                    year === taxYear && styles.pickerOptionSelected,
+                  ]}
+                  onPress={() => {
+                    setTaxYear(year);
+                    setShowYearPicker(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.pickerOptionText,
+                      isDark && styles.pickerOptionTextDark,
+                      year === taxYear && styles.pickerOptionTextSelected,
+                    ]}
+                  >
+                    {year}
+                  </Text>
+                  {year === taxYear && (
+                    <MaterialIcons name="check" size={24} color={isDark ? '#0a7ea4' : '#0a7ea4'} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    </View>
   );
 }
 
@@ -1276,16 +1336,21 @@ const styles = StyleSheet.create({
   containerDark: {
     backgroundColor: '#151718',
   },
+  scrollView: {
+    flex: 1,
+  },
   contentContainer: {
     paddingBottom: 32,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
     padding: 16,
     paddingBottom: 24,
-    gap: 16,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
   },
   headerLeft: {
     flex: 1,
@@ -1293,7 +1358,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: 0,
     color: '#11181C',
   },
   titleDark: {
@@ -1308,17 +1373,21 @@ const styles = StyleSheet.create({
     color: '#9BA1A6',
   },
   fabButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    position: 'absolute',
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: '#0a7ea4',
+    borderWidth: 3,
+    borderColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 12,
+    zIndex: 1000,
   },
   card: {
     backgroundColor: '#fff',
@@ -1858,9 +1927,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#1f2937',
   },
   pickerOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
+  },
+  pickerOptionSelected: {
+    backgroundColor: '#f0f9ff',
   },
   pickerOptionText: {
     fontSize: 16,
@@ -2084,5 +2159,29 @@ const styles = StyleSheet.create({
   pickerOptionTextSelected: {
     color: '#0a7ea4',
     fontWeight: '600',
+  },
+  taxYearPicker: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#f9fafb',
+    minWidth: 100,
+  },
+  taxYearPickerDark: {
+    backgroundColor: '#374151',
+    borderColor: '#4b5563',
+  },
+  taxYearValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#11181C',
+  },
+  taxYearValueDark: {
+    color: '#ECEDEE',
   },
 });

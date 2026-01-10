@@ -337,9 +337,6 @@ export default function Dashboard() {
         <View style={styles.headerTop}>
           <View style={styles.headerLeft}>
             <Text style={[styles.title, isDark && styles.titleDark]}>Dashboard</Text>
-            <Text style={[styles.headerSubtitle, isDark && styles.headerSubtitleDark]}>
-              Your financial overview for {taxYear}
-            </Text>
           </View>
           <TouchableOpacity
             style={[styles.taxYearPicker, isDark && styles.taxYearPickerDark]}
@@ -349,7 +346,7 @@ export default function Dashboard() {
             <Text style={[styles.taxYearValue, isDark && styles.taxYearValueDark]}>
               {taxYear}
             </Text>
-            <MaterialIcons name="arrow-drop-down" size={24} color={isDark ? '#9BA1A6' : '#666'} />
+              <MaterialIcons name="arrow-drop-down" size={20} color={isDark ? '#9BA1A6' : '#666'} />
           </TouchableOpacity>
         </View>
       </View>
@@ -537,16 +534,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#151718',
   },
   contentContainer: {
-    padding: 16,
     paddingBottom: 32,
   },
   header: {
-    marginBottom: 24,
+    padding: 16,
+    paddingBottom: 24,
+    marginBottom: 0,
   },
   headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: 12,
   },
   headerLeft: {
@@ -555,7 +553,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: 0,
     color: '#11181C',
   },
   titleDark: {
@@ -571,6 +569,7 @@ const styles = StyleSheet.create({
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    paddingHorizontal: 16,
     marginBottom: 24,
     justifyContent: 'space-between',
   },
@@ -653,6 +652,7 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: 24,
+    marginHorizontal: 16,
     backgroundColor: '#fff',
     borderRadius: 8,
     padding: 16,
@@ -785,7 +785,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e5e7eb',
     borderRadius: 8,
-    padding: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     backgroundColor: '#f9fafb',
     minWidth: 100,
   },
@@ -794,7 +795,7 @@ const styles = StyleSheet.create({
     borderColor: '#4b5563',
   },
   taxYearValue: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '600',
     color: '#11181C',
   },
