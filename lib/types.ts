@@ -208,6 +208,8 @@ export interface Expense {
   vendor?: string;
   description?: string;
   isTaxDeductible?: boolean;
+  expenseType?: string;
+  businessUsePercentage?: number | string;
   [key: string]: any;
 }
 

@@ -8,6 +8,8 @@ interface User {
   lastName?: string;
   profileImageUrl?: string;
   hasGstNumber?: boolean;
+  homeOfficePercentage?: number | string;
+  [key: string]: any;
 }
 
 export function useAuth() {

@@ -3,7 +3,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/hooks/useAuth';
 import { apiGet, apiRequest, uploadReceiptImage } from '@/lib/api';
 import { formatCurrency, formatDate, getCategoryLabel, getTodayLocalDateString, getYearFromDateString } from '@/lib/format';
-import { type Expense, type Vehicle } from '@/lib/types';
+import { type Expense, type Vehicle, HOME_OFFICE_LIVING_CATEGORIES } from '@/lib/types';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
@@ -123,6 +123,7 @@ export default function Expenses() {
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
   const [showFilterCategoryPicker, setShowFilterCategoryPicker] = useState(false);
+  const [vehicleBusinessUseMap, setVehicleBusinessUseMap] = useState<Map<string, number>>(new Map());
 
   const [formData, setFormData] = useState<ExpenseFormData>({
     baseCost: '',
@@ -323,12 +324,144 @@ export default function Expenses() {
     });
   }, [expenseList, taxYear, searchQuery, selectedCategory, selectedVendor, minAmount, maxAmount, dateFrom, dateTo]);
 
-  const totalExpenses = filteredExpenses.reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0);
-  const deductibleExpenses = filteredExpenses.reduce((sum, item) => {
+  // Helper function to calculate deductible amount and deductible GST for an expense
+  const calculateDeductible = useCallback((item: Expense, vehicleBusinessUseMap: Map<string, number>) => {
+    if (!item.isTaxDeductible) {
+      return { deductibleAmount: 0, deductibleGst: 0 };
+    }
+
+    const expenseType = (item as any).expenseType || 'self_employment';
     const baseCost = item.baseCost ? parseFloat(item.baseCost.toString()) : 0;
     const pstAmount = item.pstAmount ? parseFloat(item.pstAmount.toString()) : 0;
-    return sum + baseCost + pstAmount;
-  }, 0);
+    const gstAmount = item.gstAmount ? parseFloat(item.gstAmount.toString()) : 0;
+
+    if (expenseType === 'personal') {
+      return { deductibleAmount: 0, deductibleGst: 0 };
+    }
+
+    if (expenseType === 'home_office_living') {
+      // Home Office/Living expenses: apply home office percentage if set
+      let deductibleAmount = baseCost + pstAmount;
+      let deductibleGst = gstAmount;
+      if (user?.homeOfficePercentage) {
+        const percentage = parseFloat(user.homeOfficePercentage.toString()) / 100;
+        deductibleAmount = deductibleAmount * percentage;
+        deductibleGst = deductibleGst * percentage;
+      }
+      return { deductibleAmount, deductibleGst };
+    }
+
+    if (expenseType === 'vehicle') {
+      // Vehicle expenses: use business use percentage from odometer entries
+      const vehicleId = (item as any).vehicleId;
+      let businessPercentage = 1.0; // Default to 100% if no vehicle or percentage found
+      
+      if (vehicleId && vehicleBusinessUseMap.has(vehicleId)) {
+        businessPercentage = vehicleBusinessUseMap.get(vehicleId)! / 100;
+      }
+      
+      const deductibleAmount = (baseCost + pstAmount) * businessPercentage;
+      const deductibleGst = gstAmount * businessPercentage;
+      return { deductibleAmount, deductibleGst };
+    }
+
+    if (expenseType === 'self_employment') {
+      // Self-Employment expenses: fully deductible
+      return { deductibleAmount: baseCost + pstAmount, deductibleGst: gstAmount };
+    }
+
+    if (expenseType === 'mixed') {
+      const businessPercentage = (item as any).businessUsePercentage 
+        ? parseFloat((item as any).businessUsePercentage.toString()) / 100 
+        : 0;
+      
+      // Only business portion of base cost + proportional PST is deductible
+      const businessBaseCost = baseCost * businessPercentage;
+      const businessPstAmount = pstAmount * businessPercentage;
+      let deductibleAmount = businessBaseCost + businessPstAmount;
+      let deductibleGst = gstAmount * businessPercentage;
+      
+      // Apply home office percentage if applicable for home office/living categories
+      if (HOME_OFFICE_LIVING_CATEGORIES.includes(item.category as any) && user?.homeOfficePercentage) {
+        const homeOfficePercentage = parseFloat(user.homeOfficePercentage.toString()) / 100;
+        deductibleAmount = deductibleAmount * homeOfficePercentage;
+        deductibleGst = deductibleGst * homeOfficePercentage;
+      }
+      
+      return { deductibleAmount, deductibleGst };
+    }
+
+    // Default: treat as business expense (fully deductible)
+    return { deductibleAmount: baseCost + pstAmount, deductibleGst: gstAmount };
+  }, [user]);
+
+  // Get unique vehicle IDs from vehicle expenses
+  const vehicleIdsInExpenses = useMemo(() => {
+    const ids = new Set<string>();
+    if (!filteredExpenses) return [];
+    
+    filteredExpenses.forEach((expense) => {
+      const expenseType = (expense as any).expenseType || 'self_employment';
+      if (expenseType === 'vehicle' && (expense as any).vehicleId) {
+        const vehicleId = (expense as any).vehicleId;
+        if (vehicleId) {
+          ids.add(vehicleId);
+        }
+      }
+    });
+    
+    return Array.from(ids);
+  }, [filteredExpenses]);
+
+  // Fetch business use percentages for vehicles used in expenses
+  useEffect(() => {
+    const fetchVehiclePercentages = async () => {
+      const map = new Map<string, number>();
+      const promises = vehicleIdsInExpenses.map(async (vehicleId: string) => {
+        try {
+          const response = await apiGet<{ businessUsePercentage: number }>(`/api/vehicles/${vehicleId}/business-use-percentage?taxYear=${taxYear}`);
+          map.set(vehicleId, response.businessUsePercentage || 100);
+        } catch (error) {
+          map.set(vehicleId, 100); // Default to 100% if fetch fails
+        }
+      });
+      
+      await Promise.all(promises);
+      setVehicleBusinessUseMap(map);
+    };
+    
+    if (vehicleIdsInExpenses.length > 0) {
+      fetchVehiclePercentages();
+    } else {
+      setVehicleBusinessUseMap(new Map());
+    }
+  }, [vehicleIdsInExpenses, taxYear]);
+
+  const totalExpenses = filteredExpenses.reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0);
+  
+  // Calculate deductible expenses and deductible GST using the helper function
+  const { deductibleExpenses, deductibleGstCredits } = useMemo(() => {
+    let deductibleSum = 0;
+    let deductibleGstSum = 0;
+    
+    // Create a temporary map with default 100% for vehicles (for summary calculations)
+    const tempVehicleMap = new Map<string, number>();
+    vehicles.forEach(vehicle => {
+      if (vehicle.id) {
+        // For summary, use 100% as default - actual calculation happens in table rows
+        tempVehicleMap.set(vehicle.id, 100);
+      }
+    });
+    
+    filteredExpenses.forEach((item) => {
+      const result = calculateDeductible(item, tempVehicleMap);
+      deductibleSum += result.deductibleAmount;
+      deductibleGstSum += result.deductibleGst;
+    });
+    
+    return { deductibleExpenses: deductibleSum, deductibleGstCredits: deductibleGstSum };
+  }, [filteredExpenses, calculateDeductible, vehicles]);
+  
   const totalGstCredits = filteredExpenses.reduce((sum, item) => {
     const gstAmount = item.gstAmount ? parseFloat(item.gstAmount.toString()) : 0;
     return sum + gstAmount;
@@ -495,10 +628,9 @@ export default function Expenses() {
   };
 
   const renderExpenseItem = useCallback(({ item }: { item: Expense }) => {
-    const baseCost = item.baseCost ? parseFloat(item.baseCost.toString()) : 0;
-    const pstAmount = item.pstAmount ? parseFloat(item.pstAmount.toString()) : 0;
+    // Calculate deductible amount and deductible GST using the helper function
+    const { deductibleAmount, deductibleGst } = calculateDeductible(item, vehicleBusinessUseMap);
     const gstAmount = item.gstAmount ? parseFloat(item.gstAmount.toString()) : 0;
-    const deductibleAmount = baseCost + pstAmount;
     
     // Check if there's a linked receipt
     const hasLinkedReceipt = receipts.some((receipt) => receipt.linkedExpenseId === item.id);
@@ -545,11 +677,11 @@ export default function Expenses() {
                   {formatCurrency(deductibleAmount)}
                 </Text>
               </View>
-              {gstAmount > 0 && (
+              {deductibleGst > 0 && (
                 <View style={styles.expenseCardStat}>
-                  <Text style={[styles.expenseCardStatLabel, isDark && styles.expenseCardStatLabelDark]}>GST</Text>
+                  <Text style={[styles.expenseCardStatLabel, isDark && styles.expenseCardStatLabelDark]}>Deductible GST</Text>
                   <Text style={[styles.expenseCardStatValue, styles.expenseCardStatValueBlue, isDark && styles.expenseCardStatValueBlueDark]}>
-                    {formatCurrency(gstAmount)}
+                    {formatCurrency(deductibleGst)}
                   </Text>
                 </View>
               )}
@@ -591,7 +723,7 @@ export default function Expenses() {
         </View>
       </View>
     );
-  }, [receipts, isDark, router, handleEdit, handleDelete, deleteId]);
+  }, [receipts, isDark, router, handleEdit, handleDelete, deleteId, calculateDeductible, vehicleBusinessUseMap]);
 
   const resetFormData = () => {
     setEditingExpense(null);
@@ -803,9 +935,9 @@ export default function Expenses() {
           </Text>
         </View>
         <View style={[styles.statCard, isDark && styles.statCardDark]}>
-          <Text style={[styles.statCardTitle, isDark && styles.statCardTitleDark]}>Total GST Credits</Text>
+          <Text style={[styles.statCardTitle, isDark && styles.statCardTitleDark]}>Deductible GST Credits</Text>
           <Text style={[styles.statCardValue, styles.statCardValueBlue, isDark && styles.statCardValueBlueDark]}>
-            {formatCurrency(totalGstCredits)}
+            {formatCurrency(deductibleGstCredits)}
           </Text>
         </View>
       </View>

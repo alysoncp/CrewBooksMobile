@@ -7,18 +7,18 @@ import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    FlatList,
-    Image,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  FlatList,
+  Image,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -30,6 +30,7 @@ interface OdometerReading {
   readingDate?: string;
   photoDate?: string;
   odometerValue?: number;
+  mileage?: number | string;
   vehicleId: string;
   notes?: string;
   uploadedAt?: string;
@@ -58,8 +59,26 @@ export default function OdometerGallery() {
   const [pressedCardId, setPressedCardId] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadDate, setUploadDate] = useState<string>(getTodayLocalDateString());
-  const [uploadOdometerValue, setUploadOdometerValue] = useState<string>('');
+  const [uploadMileage, setUploadMileage] = useState<string>('');
   const [uploadNotes, setUploadNotes] = useState<string>('');
+  const [pendingPhotoUri, setPendingPhotoUri] = useState<string | null>(null);
+  const [isEditingPhoto, setIsEditingPhoto] = useState(false);
+  const [editPhotoDate, setEditPhotoDate] = useState<string>('');
+  const [editPhotoMileage, setEditPhotoMileage] = useState<string>('');
+  const [editPhotoNotes, setEditPhotoNotes] = useState<string>('');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  // Get current tax year
+  const currentYear = new Date().getFullYear().toString();
+  const currentYearStart = `${currentYear}-01-01`;
+
+  // Calculate photo status
+  const currentYearPhotos = readings.filter(reading => {
+    const photoDate = reading.photoDate || reading.readingDate || '';
+    return photoDate >= currentYearStart;
+  });
+  const hasCurrentYearPhotos = currentYearPhotos.length > 0;
+  const hasAnyPhotos = readings.length > 0;
 
   useEffect(() => {
     if (vehicleId) {
@@ -135,6 +154,13 @@ export default function OdometerGallery() {
       return;
     }
 
+    // Validate mileage is required and > 0
+    const mileageValue = parseFloat(uploadMileage);
+    if (!uploadMileage || uploadMileage.trim() === '' || isNaN(mileageValue) || mileageValue <= 0) {
+      Alert.alert('Error', 'Please enter a valid odometer reading (must be greater than 0)');
+      return;
+    }
+
     const fullUrl = `${API_URL}/api/vehicles/${vehicleId}/odometer-photos`;
     
     if (__DEV__) {
@@ -160,6 +186,8 @@ export default function OdometerGallery() {
       if (uploadDate) {
         formData.append('photoDate', uploadDate);
       }
+      // Add required mileage field
+      formData.append('mileage', uploadMileage);
       if (uploadNotes) {
         formData.append('notes', uploadNotes);
       }
@@ -190,8 +218,9 @@ export default function OdometerGallery() {
       await fetchReadings();
       setIsUploadModalOpen(false);
       setUploadDate(getTodayLocalDateString());
-      setUploadOdometerValue('');
+      setUploadMileage('');
       setUploadNotes('');
+      setPendingPhotoUri(null);
       Alert.alert('Success', 'Odometer photo uploaded successfully');
     } catch (error: any) {
       console.error('Error uploading odometer reading:', error);
@@ -226,7 +255,8 @@ export default function OdometerGallery() {
       });
 
       if (!result.canceled && result.assets[0]) {
-        await uploadOdometerImage(result.assets[0].uri);
+        setPendingPhotoUri(result.assets[0].uri);
+        // Don't upload immediately - wait for user to enter mileage
       }
     } catch (error) {
       console.error('Error taking photo:', error);
@@ -251,7 +281,8 @@ export default function OdometerGallery() {
       });
 
       if (!result.canceled && result.assets[0]) {
-        await uploadOdometerImage(result.assets[0].uri);
+        setPendingPhotoUri(result.assets[0].uri);
+        // Don't upload immediately - wait for user to enter mileage
       }
     } catch (error) {
       console.error('Error picking image:', error);
@@ -259,10 +290,26 @@ export default function OdometerGallery() {
     }
   };
 
+  const handleUploadWithMileage = async () => {
+    if (!pendingPhotoUri) {
+      Alert.alert('Error', 'No photo selected');
+      return;
+    }
+
+    const mileageValue = parseFloat(uploadMileage);
+    if (!uploadMileage || uploadMileage.trim() === '' || isNaN(mileageValue) || mileageValue <= 0) {
+      Alert.alert('Error', 'Please enter a valid odometer reading (must be greater than 0)');
+      return;
+    }
+
+    await uploadOdometerImage(pendingPhotoUri);
+  };
+
   const handleAddPress = () => {
     setUploadDate(getTodayLocalDateString());
-    setUploadOdometerValue('');
+    setUploadMileage('');
     setUploadNotes('');
+    setPendingPhotoUri(null);
     setIsUploadModalOpen(true);
   };
 
@@ -309,6 +356,58 @@ export default function OdometerGallery() {
   const openImageModal = (reading: OdometerReading) => {
     setSelectedReading(reading);
     setIsImageModalOpen(true);
+    setIsEditingPhoto(false);
+    // Initialize edit values
+    const photoDate = reading.photoDate || reading.readingDate || '';
+    setEditPhotoDate(photoDate);
+    setEditPhotoMileage((reading.mileage || reading.odometerValue || '').toString());
+    setEditPhotoNotes(reading.notes || '');
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedReading || !vehicleId) return;
+
+    // Validate mileage
+    const mileageValue = parseFloat(editPhotoMileage);
+    if (!editPhotoMileage || editPhotoMileage.trim() === '' || isNaN(mileageValue) || mileageValue <= 0) {
+      Alert.alert('Error', 'Please enter a valid odometer reading (must be greater than 0)');
+      return;
+    }
+
+    // Validate date
+    if (!editPhotoDate || editPhotoDate.trim() === '') {
+      Alert.alert('Error', 'Please enter a valid date');
+      return;
+    }
+
+    try {
+      setIsSavingEdit(true);
+      await apiRequest('PATCH', `/api/vehicles/${vehicleId}/odometer-photos/${selectedReading.id}`, {
+        photoDate: editPhotoDate,
+        mileage: editPhotoMileage,
+        notes: editPhotoNotes || null,
+      });
+      
+      await fetchReadings();
+      setIsEditingPhoto(false);
+      Alert.alert('Success', 'Photo updated successfully');
+    } catch (error: any) {
+      console.error('Error updating photo:', error);
+      Alert.alert('Error', error.message || 'Failed to update photo. Please try again.');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingPhoto(false);
+    // Reset to original values
+    if (selectedReading) {
+      const photoDate = selectedReading.photoDate || selectedReading.readingDate || '';
+      setEditPhotoDate(photoDate);
+      setEditPhotoMileage((selectedReading.mileage || selectedReading.odometerValue || '').toString());
+      setEditPhotoNotes(selectedReading.notes || '');
+    }
   };
 
   const renderReadingCard = ({ item }: { item: OdometerReading }) => {
@@ -366,11 +465,18 @@ export default function OdometerGallery() {
               </TouchableOpacity>
             </View>
           </View>
-          {(item.readingDate || item.photoDate) && (
-            <Text style={[styles.readingDate, isDark && styles.readingDateDark]}>
-              {formatDate(item.photoDate || item.readingDate || '')}
-            </Text>
-          )}
+          <View style={styles.readingCardInfo}>
+            {(item.readingDate || item.photoDate) && (
+              <Text style={[styles.readingDate, isDark && styles.readingDateDark]}>
+                {formatDate(item.photoDate || item.readingDate || '')}
+              </Text>
+            )}
+            {(item.mileage || item.odometerValue) && (
+              <Text style={[styles.readingMileage, isDark && styles.readingMileageDark]}>
+                {Number(item.mileage || item.odometerValue).toLocaleString('en-CA', { maximumFractionDigits: 0 })} km
+              </Text>
+            )}
+          </View>
         </TouchableOpacity>
       </View>
     );
@@ -403,9 +509,27 @@ export default function OdometerGallery() {
           </TouchableOpacity>
           <View style={styles.headerText}>
             <Text style={[styles.title, isDark && styles.titleDark]}>Odometer Gallery</Text>
-            <Text style={[styles.subtitle, isDark && styles.subtitleDark]}>
-              {vehicleName || 'Vehicle'} • {readings?.length || 0} reading{(readings?.length || 0) !== 1 ? 's' : ''}
-            </Text>
+            <View style={styles.headerSubtitleRow}>
+              <Text style={[styles.subtitle, isDark && styles.subtitleDark]}>
+                {vehicleName || 'Vehicle'} • {readings?.length || 0} reading{(readings?.length || 0) !== 1 ? 's' : ''}
+              </Text>
+              {hasAnyPhotos && (
+                <View style={[
+                  styles.statusBadge,
+                  hasCurrentYearPhotos ? styles.statusBadgeGood : styles.statusBadgeWarning,
+                  isDark && styles.statusBadgeDark
+                ]}>
+                  <Text style={[
+                    styles.statusBadgeText,
+                    isDark && styles.statusBadgeTextDark
+                  ]}>
+                    {hasCurrentYearPhotos 
+                      ? `${currentYearPhotos.length} photo${currentYearPhotos.length !== 1 ? 's' : ''} this year`
+                      : `Needs ${currentYear} photo`}
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
         </View>
         <TouchableOpacity
@@ -467,63 +591,167 @@ export default function OdometerGallery() {
           </View>
 
           <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
-            <View style={styles.formGroup}>
-              <Text style={[styles.label, isDark && styles.labelDark]}>Photo Date</Text>
-              <TextInput
-                style={[styles.input, isDark && styles.inputDark]}
-                placeholder="YYYY-MM-DD (optional - will use EXIF or today's date)"
-                placeholderTextColor={isDark ? '#9BA1A6' : '#666'}
-                value={uploadDate}
-                onChangeText={setUploadDate}
-              />
-              <Text style={[styles.helperText, isDark && styles.helperTextDark]}>
-                Optional: Leave empty to use photo EXIF date or today's date
-              </Text>
-            </View>
+            {!pendingPhotoUri ? (
+              <>
+                <View style={styles.formGroup}>
+                  <Text style={[styles.label, isDark && styles.labelDark]}>Photo Date</Text>
+                  <TextInput
+                    style={[styles.input, isDark && styles.inputDark]}
+                    placeholder="YYYY-MM-DD (optional - will use EXIF or today's date)"
+                    placeholderTextColor={isDark ? '#9BA1A6' : '#666'}
+                    value={uploadDate}
+                    onChangeText={setUploadDate}
+                  />
+                  <Text style={[styles.helperText, isDark && styles.helperTextDark]}>
+                    Optional: Leave empty to use photo EXIF date or today's date
+                  </Text>
+                </View>
 
-            <View style={styles.formGroup}>
-              <Text style={[styles.label, isDark && styles.labelDark]}>Notes</Text>
-              <TextInput
-                style={[styles.input, styles.textArea, isDark && styles.inputDark]}
-                placeholder="Optional notes..."
-                placeholderTextColor={isDark ? '#9BA1A6' : '#666'}
-                value={uploadNotes}
-                onChangeText={setUploadNotes}
-                multiline
-                numberOfLines={3}
-              />
-            </View>
+                <View style={styles.formGroup}>
+                  <Text style={[styles.label, isDark && styles.labelDark]}>
+                    Odometer Reading <Text style={{ color: '#ef4444' }}>*</Text>
+                  </Text>
+                  <TextInput
+                    style={[styles.input, isDark && styles.inputDark]}
+                    placeholder="Enter mileage shown in photo"
+                    placeholderTextColor={isDark ? '#9BA1A6' : '#666'}
+                    value={uploadMileage}
+                    onChangeText={setUploadMileage}
+                    keyboardType="decimal-pad"
+                  />
+                  <Text style={[styles.helperText, isDark && styles.helperTextDark]}>
+                    <Text style={{ fontWeight: '600' }}>Required for tax calculations.</Text> Enter the odometer reading displayed in this photo. This is used to calculate your total annual mileage and business use percentage.
+                  </Text>
+                  {uploadMileage && parseFloat(uploadMileage) <= 0 && (
+                    <Text style={[styles.errorText, isDark && styles.errorTextDark]}>
+                      Please enter a valid mileage reading greater than 0.
+                    </Text>
+                  )}
+                </View>
 
-            <View style={styles.uploadButtons}>
-              <TouchableOpacity
-                style={[styles.uploadButton, isDark && styles.uploadButtonDark]}
-                onPress={handleTakePhoto}
-                disabled={isUploading}
-              >
-                <MaterialIcons name="camera-alt" size={24} color={isDark ? '#ECEDEE' : '#11181C'} />
-                <Text style={[styles.uploadButtonText, isDark && styles.uploadButtonTextDark]}>
-                  Take Photo
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.uploadButton, isDark && styles.uploadButtonDark]}
-                onPress={handlePickImage}
-                disabled={isUploading}
-              >
-                <MaterialIcons name="photo-library" size={24} color={isDark ? '#ECEDEE' : '#11181C'} />
-                <Text style={[styles.uploadButtonText, isDark && styles.uploadButtonTextDark]}>
-                  Choose from Gallery
-                </Text>
-              </TouchableOpacity>
-            </View>
+                <View style={styles.formGroup}>
+                  <Text style={[styles.label, isDark && styles.labelDark]}>Notes</Text>
+                  <TextInput
+                    style={[styles.input, styles.textArea, isDark && styles.inputDark]}
+                    placeholder="Optional notes..."
+                    placeholderTextColor={isDark ? '#9BA1A6' : '#666'}
+                    value={uploadNotes}
+                    onChangeText={setUploadNotes}
+                    multiline
+                    numberOfLines={3}
+                  />
+                </View>
 
-            {isUploading && (
-              <View style={styles.uploadingContainer}>
-                <ActivityIndicator size="small" color={isDark ? '#9BA1A6' : '#666'} />
-                <Text style={[styles.uploadingText, isDark && styles.uploadingTextDark]}>
-                  Uploading...
-                </Text>
-              </View>
+                <View style={styles.uploadButtons}>
+                  <TouchableOpacity
+                    style={[styles.uploadButton, isDark && styles.uploadButtonDark]}
+                    onPress={handleTakePhoto}
+                    disabled={isUploading}
+                  >
+                    <MaterialIcons name="camera-alt" size={24} color={isDark ? '#ECEDEE' : '#11181C'} />
+                    <Text style={[styles.uploadButtonText, isDark && styles.uploadButtonTextDark]}>
+                      Take Photo
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.uploadButton, isDark && styles.uploadButtonDark]}
+                    onPress={handlePickImage}
+                    disabled={isUploading}
+                  >
+                    <MaterialIcons name="photo-library" size={24} color={isDark ? '#ECEDEE' : '#11181C'} />
+                    <Text style={[styles.uploadButtonText, isDark && styles.uploadButtonTextDark]}>
+                      Choose from Gallery
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : (
+              <>
+                <View style={styles.formGroup}>
+                  <Text style={[styles.label, isDark && styles.labelDark]}>Photo Selected</Text>
+                  <View style={[styles.selectedPhotoPreview, isDark && styles.selectedPhotoPreviewDark]}>
+                    <Image
+                      source={{ uri: pendingPhotoUri }}
+                      style={styles.selectedPhotoImage}
+                      resizeMode="contain"
+                    />
+                    <TouchableOpacity
+                      style={styles.removePhotoButton}
+                      onPress={() => setPendingPhotoUri(null)}
+                    >
+                      <MaterialIcons name="close" size={20} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={[styles.label, isDark && styles.labelDark]}>Photo Date</Text>
+                  <TextInput
+                    style={[styles.input, isDark && styles.inputDark]}
+                    placeholder="YYYY-MM-DD"
+                    placeholderTextColor={isDark ? '#9BA1A6' : '#666'}
+                    value={uploadDate}
+                    onChangeText={setUploadDate}
+                  />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={[styles.label, isDark && styles.labelDark]}>
+                    Odometer Reading <Text style={{ color: '#ef4444' }}>*</Text>
+                  </Text>
+                  <TextInput
+                    style={[styles.input, isDark && styles.inputDark]}
+                    placeholder="Enter mileage shown in photo"
+                    placeholderTextColor={isDark ? '#9BA1A6' : '#666'}
+                    value={uploadMileage}
+                    onChangeText={setUploadMileage}
+                    keyboardType="decimal-pad"
+                  />
+                  <Text style={[styles.helperText, isDark && styles.helperTextDark]}>
+                    <Text style={{ fontWeight: '600' }}>Required for tax calculations.</Text> Enter the odometer reading displayed in this photo.
+                  </Text>
+                  {uploadMileage && parseFloat(uploadMileage) <= 0 && (
+                    <Text style={[styles.errorText, isDark && styles.errorTextDark]}>
+                      Please enter a valid mileage reading greater than 0.
+                    </Text>
+                  )}
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={[styles.label, isDark && styles.labelDark]}>Notes</Text>
+                  <TextInput
+                    style={[styles.input, styles.textArea, isDark && styles.inputDark]}
+                    placeholder="Optional notes..."
+                    placeholderTextColor={isDark ? '#9BA1A6' : '#666'}
+                    value={uploadNotes}
+                    onChangeText={setUploadNotes}
+                    multiline
+                    numberOfLines={3}
+                  />
+                </View>
+
+                <TouchableOpacity
+                  style={[
+                    styles.uploadConfirmButton,
+                    (!uploadMileage || parseFloat(uploadMileage) <= 0) && styles.uploadConfirmButtonDisabled,
+                    isDark && styles.uploadConfirmButtonDark,
+                  ]}
+                  onPress={handleUploadWithMileage}
+                  disabled={isUploading || !uploadMileage || parseFloat(uploadMileage) <= 0}
+                >
+                  {isUploading ? (
+                    <>
+                      <ActivityIndicator size="small" color="#fff" />
+                      <Text style={styles.uploadConfirmButtonText}>Uploading...</Text>
+                    </>
+                  ) : (
+                    <>
+                      <MaterialIcons name="cloud-upload" size={24} color="#fff" />
+                      <Text style={styles.uploadConfirmButtonText}>Upload Photo</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </>
             )}
           </ScrollView>
         </View>
@@ -534,7 +762,12 @@ export default function OdometerGallery() {
         visible={isImageModalOpen}
         transparent
         animationType="fade"
-        onRequestClose={() => setIsImageModalOpen(false)}
+        onRequestClose={() => {
+          if (isEditingPhoto) {
+            handleCancelEdit();
+          }
+          setIsImageModalOpen(false);
+        }}
       >
         <View style={styles.imageModalContainer}>
           <TouchableOpacity
@@ -547,23 +780,89 @@ export default function OdometerGallery() {
                 <>
                   <View style={[styles.imageModalHeader, { paddingTop: insets.top + 16 }]}>
                     <View style={styles.imageModalHeaderInfo}>
-                      {(selectedReading.photoDate || selectedReading.readingDate) && (
-                        <Text style={[styles.imageModalTitle, isDark && styles.imageModalTitleDark]}>
-                          {formatDate(selectedReading.photoDate || selectedReading.readingDate || '')}
-                        </Text>
-                      )}
-                      {selectedReading.notes && (
-                        <Text style={[styles.imageModalNotes, isDark && styles.imageModalNotesDark]}>
-                          {selectedReading.notes}
-                        </Text>
+                      {isEditingPhoto ? (
+                        <>
+                          <View style={styles.imageModalEditField}>
+                            <Text style={[styles.imageModalEditLabel, isDark && styles.imageModalEditLabelDark]}>
+                              Photo Date
+                            </Text>
+                            <TextInput
+                              style={[styles.imageModalEditInput, isDark && styles.imageModalEditInputDark]}
+                              value={editPhotoDate}
+                              onChangeText={setEditPhotoDate}
+                              placeholder="YYYY-MM-DD"
+                              placeholderTextColor={isDark ? '#9BA1A6' : '#666'}
+                            />
+                          </View>
+                          <View style={styles.imageModalEditField}>
+                            <Text style={[styles.imageModalEditLabel, isDark && styles.imageModalEditLabelDark]}>
+                              Odometer Reading <Text style={{ color: '#ef4444' }}>*</Text>
+                            </Text>
+                            <TextInput
+                              style={[styles.imageModalEditInput, isDark && styles.imageModalEditInputDark]}
+                              value={editPhotoMileage}
+                              onChangeText={setEditPhotoMileage}
+                              placeholder="Enter mileage"
+                              placeholderTextColor={isDark ? '#9BA1A6' : '#666'}
+                              keyboardType="decimal-pad"
+                            />
+                          </View>
+                          <View style={styles.imageModalEditField}>
+                            <Text style={[styles.imageModalEditLabel, isDark && styles.imageModalEditLabelDark]}>
+                              Notes
+                            </Text>
+                            <TextInput
+                              style={[styles.imageModalEditInput, styles.imageModalEditTextArea, isDark && styles.imageModalEditInputDark]}
+                              value={editPhotoNotes}
+                              onChangeText={setEditPhotoNotes}
+                              placeholder="Optional notes..."
+                              placeholderTextColor={isDark ? '#9BA1A6' : '#666'}
+                              multiline
+                              numberOfLines={2}
+                            />
+                          </View>
+                        </>
+                      ) : (
+                        <>
+                          {(selectedReading.photoDate || selectedReading.readingDate) && (
+                            <Text style={[styles.imageModalTitle, isDark && styles.imageModalTitleDark]}>
+                              {formatDate(selectedReading.photoDate || selectedReading.readingDate || '')}
+                            </Text>
+                          )}
+                          {(selectedReading.mileage || selectedReading.odometerValue) && (
+                            <Text style={[styles.imageModalMileage, isDark && styles.imageModalMileageDark]}>
+                              {Number(selectedReading.mileage || selectedReading.odometerValue).toLocaleString('en-CA', { maximumFractionDigits: 0 })} km
+                            </Text>
+                          )}
+                          {selectedReading.notes && (
+                            <Text style={[styles.imageModalNotes, isDark && styles.imageModalNotesDark]}>
+                              {selectedReading.notes}
+                            </Text>
+                          )}
+                        </>
                       )}
                     </View>
-                    <TouchableOpacity
-                      onPress={() => setIsImageModalOpen(false)}
-                      style={styles.imageModalCloseButton}
-                    >
-                      <MaterialIcons name="close" size={24} color={isDark ? '#ECEDEE' : '#11181C'} />
-                    </TouchableOpacity>
+                    <View style={styles.imageModalHeaderActions}>
+                      {!isEditingPhoto && (
+                        <TouchableOpacity
+                          onPress={() => setIsEditingPhoto(true)}
+                          style={styles.imageModalEditButton}
+                        >
+                          <MaterialIcons name="edit" size={20} color={isDark ? '#ECEDEE' : '#11181C'} />
+                        </TouchableOpacity>
+                      )}
+                      <TouchableOpacity
+                        onPress={() => {
+                          if (isEditingPhoto) {
+                            handleCancelEdit();
+                          }
+                          setIsImageModalOpen(false);
+                        }}
+                        style={styles.imageModalCloseButton}
+                      >
+                        <MaterialIcons name="close" size={24} color={isDark ? '#ECEDEE' : '#11181C'} />
+                      </TouchableOpacity>
+                    </View>
                   </View>
                   <ScrollView
                     style={styles.imageModalScrollView}
@@ -581,24 +880,52 @@ export default function OdometerGallery() {
                     />
                   </ScrollView>
                   <View style={[styles.imageModalFooter, isDark && styles.imageModalFooterDark]}>
-                    <TouchableOpacity
-                      style={[styles.imageModalDeleteButton, isDark && styles.imageModalDeleteButtonDark]}
-                      onPress={() => {
-                        if (selectedReading) {
-                          handleDelete(selectedReading);
-                        }
-                      }}
-                      disabled={deleteId === selectedReading.id}
-                    >
-                      {deleteId === selectedReading.id ? (
-                        <ActivityIndicator size="small" color="#ef4444" />
-                      ) : (
-                        <>
-                          <MaterialIcons name="delete" size={20} color="#ef4444" />
-                          <Text style={styles.imageModalDeleteText}>Delete</Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
+                    {isEditingPhoto ? (
+                      <View style={styles.imageModalEditActions}>
+                        <TouchableOpacity
+                          style={[styles.imageModalCancelButton, isDark && styles.imageModalCancelButtonDark]}
+                          onPress={handleCancelEdit}
+                          disabled={isSavingEdit}
+                        >
+                          <Text style={[styles.imageModalCancelButtonText, isDark && styles.imageModalCancelButtonTextDark]}>
+                            Cancel
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.imageModalSaveButton, isSavingEdit && styles.imageModalSaveButtonDisabled]}
+                          onPress={handleSaveEdit}
+                          disabled={isSavingEdit}
+                        >
+                          {isSavingEdit ? (
+                            <ActivityIndicator size="small" color="#fff" />
+                          ) : (
+                            <>
+                              <MaterialIcons name="check" size={20} color="#fff" />
+                              <Text style={styles.imageModalSaveButtonText}>Save</Text>
+                            </>
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        style={[styles.imageModalDeleteButton, isDark && styles.imageModalDeleteButtonDark]}
+                        onPress={() => {
+                          if (selectedReading) {
+                            handleDelete(selectedReading);
+                          }
+                        }}
+                        disabled={deleteId === selectedReading.id}
+                      >
+                        {deleteId === selectedReading.id ? (
+                          <ActivityIndicator size="small" color="#ef4444" />
+                        ) : (
+                          <>
+                            <MaterialIcons name="delete" size={20} color="#ef4444" />
+                            <Text style={styles.imageModalDeleteText}>Delete</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </>
               )}
@@ -651,6 +978,36 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   subtitleDark: {
+    color: '#9BA1A6',
+  },
+  headerSubtitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 4,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    fontSize: 11,
+  },
+  statusBadgeGood: {
+    backgroundColor: '#d1fae5',
+  },
+  statusBadgeWarning: {
+    backgroundColor: '#fef3c7',
+  },
+  statusBadgeDark: {
+    backgroundColor: '#374151',
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#065f46',
+  },
+  statusBadgeTextDark: {
     color: '#9BA1A6',
   },
   addButton: {
@@ -780,12 +1137,24 @@ const styles = StyleSheet.create({
   readingValueDark: {
     color: '#ECEDEE',
   },
+  readingCardInfo: {
+    marginTop: 4,
+  },
   readingDate: {
     fontSize: 12,
     color: '#666',
   },
   readingDateDark: {
     color: '#9BA1A6',
+  },
+  readingMileage: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#11181C',
+    marginTop: 2,
+  },
+  readingMileageDark: {
+    color: '#ECEDEE',
   },
   modalContainer: {
     flex: 1,
@@ -876,6 +1245,62 @@ const styles = StyleSheet.create({
   helperTextDark: {
     color: '#9BA1A6',
   },
+  errorText: {
+    fontSize: 12,
+    color: '#ef4444',
+    marginTop: 6,
+  },
+  errorTextDark: {
+    color: '#f87171',
+  },
+  selectedPhotoPreview: {
+    width: '100%',
+    height: 200,
+    borderRadius: 10,
+    overflow: 'hidden',
+    backgroundColor: '#f3f4f6',
+    position: 'relative',
+    marginTop: 8,
+  },
+  selectedPhotoPreviewDark: {
+    backgroundColor: '#374151',
+  },
+  selectedPhotoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  removePhotoButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  uploadConfirmButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 16,
+    borderRadius: 10,
+    backgroundColor: '#0a7ea4',
+    marginTop: 8,
+  },
+  uploadConfirmButtonDark: {
+    backgroundColor: '#0a7ea4',
+  },
+  uploadConfirmButtonDisabled: {
+    opacity: 0.5,
+  },
+  uploadConfirmButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
   uploadButtons: {
     flexDirection: 'row',
     gap: 12,
@@ -944,6 +1369,15 @@ const styles = StyleSheet.create({
   },
   imageModalHeaderInfo: {
     flex: 1,
+    marginRight: 12,
+  },
+  imageModalHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  imageModalEditButton: {
+    padding: 8,
   },
   imageModalTitle: {
     fontSize: 18,
@@ -961,6 +1395,15 @@ const styles = StyleSheet.create({
   },
   imageModalDateDark: {
     color: '#9BA1A6',
+  },
+  imageModalMileage: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ECEDEE',
+    marginTop: 4,
+  },
+  imageModalMileageDark: {
+    color: '#ECEDEE',
   },
   imageModalNotes: {
     fontSize: 14,
@@ -1014,6 +1457,86 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#ef4444',
+  },
+  imageModalEditField: {
+    marginBottom: 12,
+  },
+  imageModalEditLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#9BA1A6',
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  imageModalEditLabelDark: {
+    color: '#9BA1A6',
+  },
+  imageModalEditInput: {
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+    color: '#ECEDEE',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  imageModalEditInputDark: {
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    color: '#ECEDEE',
+  },
+  imageModalEditTextArea: {
+    minHeight: 60,
+    textAlignVertical: 'top',
+  },
+  imageModalEditActions: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  imageModalCancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imageModalCancelButtonDark: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  imageModalCancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ECEDEE',
+  },
+  imageModalCancelButtonTextDark: {
+    color: '#ECEDEE',
+  },
+  imageModalSaveButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#0a7ea4',
+  },
+  imageModalSaveButtonDisabled: {
+    opacity: 0.6,
+  },
+  imageModalSaveButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
 });
 
