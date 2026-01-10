@@ -302,10 +302,6 @@ export default function Dashboard() {
   const provincialTax = (data?.taxCalculation?.provincialTax ?? 0) * incomeRatio;
   const cppContribution = (data?.taxCalculation?.cppContribution ?? 0) * incomeRatio;
   const totalTaxOwed = federalTax + provincialTax + cppContribution;
-  const effectiveRate = netIncome > 0 ? (totalTaxOwed / netIncome) * 100 : 0;
-
-  const isRefund = totalTaxOwed < 0;
-  const taxLabel = isRefund ? 'Estimated CRA Refund' : 'Estimated CRA Owing';
 
   // Recalculate expenses by category
   const expensesByCategory = useMemo(() => {
@@ -548,13 +544,6 @@ const styles = StyleSheet.create({
   titleDark: {
     color: '#ECEDEE',
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#666',
-  },
-  headerSubtitleDark: {
-    color: '#9BA1A6',
-  },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -632,12 +621,6 @@ const styles = StyleSheet.create({
   },
   subtitleDark: {
     color: '#9BA1A6',
-  },
-  refundText: {
-    color: '#10b981',
-  },
-  owedText: {
-    color: '#ef4444',
   },
   section: {
     marginBottom: 24,

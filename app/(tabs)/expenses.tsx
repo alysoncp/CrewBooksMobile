@@ -1683,13 +1683,6 @@ const styles = StyleSheet.create({
   titleDark: {
     color: '#ECEDEE',
   },
-  subtitle: {
-    fontSize: 14,
-    color: '#666',
-  },
-  subtitleDark: {
-    color: '#9BA1A6',
-  },
   fabButton: {
     position: 'absolute',
     width: 64,
@@ -1905,9 +1898,6 @@ const styles = StyleSheet.create({
   expenseCardDateDark: {
     color: '#9BA1A6',
   },
-  expenseCardAmount: {
-    color: '#ef4444',
-  },
   expenseCardBody: {
     gap: 8,
   },
@@ -2012,9 +2002,6 @@ const styles = StyleSheet.create({
   },
   badgeTextDark: {
     color: '#9BA1A6',
-  },
-  actionButton: {
-    padding: 4,
   },
   modalContainer: {
     flex: 1,

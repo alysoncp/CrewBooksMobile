@@ -1366,14 +1366,6 @@ const styles = StyleSheet.create({
   titleDark: {
     color: '#ECEDEE',
   },
-  subtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 16,
-  },
-  subtitleDark: {
-    color: '#9BA1A6',
-  },
   fabButton: {
     position: 'absolute',
     width: 64,
@@ -1542,86 +1534,6 @@ const styles = StyleSheet.create({
   },
   emptyStateTextDark: {
     color: '#9BA1A6',
-  },
-  tableHeader: {
-    flexDirection: 'row',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-    backgroundColor: '#f9fafb',
-  },
-  tableHeaderDark: {
-    backgroundColor: '#374151',
-    borderBottomColor: '#4b5563',
-  },
-  tableHeaderText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#666',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  tableHeaderTextDark: {
-    color: '#9BA1A6',
-  },
-  tableHeaderTextDate: {
-    width: '20%',
-  },
-  tableHeaderTextType: {
-    width: '20%',
-  },
-  tableHeaderTextProduction: {
-    flex: 1,
-  },
-  tableHeaderTextAmount: {
-    width: '25%',
-    textAlign: 'right',
-  },
-  tableHeaderTextAction: {
-    width: 40,
-  },
-  tableRow: {
-    flexDirection: 'row',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-    alignItems: 'center',
-  },
-  tableRowDark: {
-    borderBottomColor: '#4b5563',
-  },
-  tableCell: {
-    paddingRight: 8,
-  },
-  tableCellText: {
-    fontSize: 14,
-    color: '#666',
-  },
-  tableCellTextDark: {
-    color: '#9BA1A6',
-  },
-  tableCellTextBold: {
-    fontWeight: '500',
-    color: '#11181C',
-  },
-  tableCellProduction: {
-    flex: 1,
-  },
-  tableCellAmount: {
-    width: '25%',
-    alignItems: 'flex-end',
-  },
-  tableCellAction: {
-    width: 40,
-    alignItems: 'center',
-  },
-  tableCellAmountText: {
-    fontSize: 14,
-    fontWeight: '500',
-    fontFamily: 'monospace',
-    color: '#10b981',
   },
   badge: {
     alignSelf: 'flex-start',

@@ -778,13 +778,6 @@ const styles = StyleSheet.create({
   titleDark: {
     color: '#ECEDEE',
   },
-  subtitle: {
-    fontSize: 14,
-    color: '#666',
-  },
-  subtitleDark: {
-    color: '#9BA1A6',
-  },
   card: {
     backgroundColor: '#fff',
     borderRadius: 8,

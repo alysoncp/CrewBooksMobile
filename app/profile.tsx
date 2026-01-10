@@ -128,7 +128,6 @@ export default function ProfilePage() {
 
   const currentTier = user?.subscriptionTier || 'basic';
   const tierInfo = PRICING_TIERS[currentTier as keyof typeof PRICING_TIERS] || PRICING_TIERS.basic;
-  const isBasicTier = currentTier === 'basic';
   const isPersonalTier = currentTier === 'personal';
   const isCorporateTier = currentTier === 'corporate';
 
